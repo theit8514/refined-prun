@@ -140,7 +140,9 @@ export const CXPO_OPEN = act.addActionStep<Data>({
       ctx.cacheDescription();
     });
 
-    await complete();
+    if (!shouldUnwatch) {
+      await complete();
+    }
     unwatch();
   },
 });
