@@ -1,6 +1,7 @@
 import { act } from '@src/features/XIT/ACT/act-registry';
 import Edit from '@src/features/XIT/ACT/actions/cx-buy/Edit.vue';
 import { CXPO_BUY } from '@src/features/XIT/ACT/action-steps/CXPO_BUY';
+import { CXPO_OPEN } from '@src/features/XIT/ACT/action-steps/CXPO_OPEN';
 import { fixed0, fixed02 } from '@src/utils/format';
 import { fillAmount } from '@src/features/XIT/ACT/actions/cx-buy/utils';
 import { AssertFn } from '@src/features/XIT/ACT/shared-types';
@@ -87,16 +88,20 @@ act.addAction({
         bidAmount = filled.amount;
       }
 
-      emitStep(
-        CXPO_BUY({
-          exchange,
-          ticker,
-          amount: bidAmount,
-          priceLimit: priceLimit,
-          buyPartial: buyPartial,
-          allowUnfilled: allowUnfilled,
-        }),
-      );
+      const stepData = {
+        exchange,
+        ticker,
+        amount: bidAmount,
+        priceLimit: priceLimit,
+        buyPartial: buyPartial,
+        allowUnfilled: allowUnfilled,
+      };
+
+      if (ctx.mode === 'Pricing') {
+        emitStep(CXPO_OPEN(stepData));
+      } else {
+        emitStep(CXPO_BUY(stepData));
+      }
     }
   },
 });

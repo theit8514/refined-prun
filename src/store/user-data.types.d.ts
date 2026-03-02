@@ -41,6 +41,7 @@ declare namespace UserData {
   }
 
   interface ActionPackageData {
+    mode?: 'Pricing' | 'Execution';
     groups: MaterialGroupData[];
     actions: ActionData[];
     global: {
