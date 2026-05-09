@@ -9,6 +9,9 @@ export interface ElecRefreshStep {
   command: string;
 }
 
+/** `ADM` = administration tiles only; `COGC` = council tiles only; `both` = ADM then COGC per planet. */
+export type ElecRefreshQueueScope = 'both' | 'ADM' | 'COGC';
+
 export interface ElecRefreshCallbacks {
   onBufferSplit: () => void;
   onLog: (tag: LogTag, message: string) => void;
@@ -56,7 +59,7 @@ export class ElecDataRefreshRunner {
     });
   }
 
-  prepare(planetNaturalIds: string[]) {
+  prepare(planetNaturalIds: string[], scope: ElecRefreshQueueScope = 'both') {
     if (planetNaturalIds.length === 0) {
       this.callbacks.onLog('WARNING', 'No bases — queue empty.');
       this.clearSteps();
@@ -65,22 +68,28 @@ export class ElecDataRefreshRunner {
 
     this.steps = [];
     for (const id of planetNaturalIds) {
-      this.steps.push({
-        kind: 'ADM',
-        planetNaturalId: id,
-        command: `ADM ${id}`,
-      });
-      this.steps.push({
-        kind: 'COGC',
-        planetNaturalId: id,
-        command: `COGC ${id}`,
-      });
+      if (scope === 'both' || scope === 'ADM') {
+        this.steps.push({
+          kind: 'ADM',
+          planetNaturalId: id,
+          command: `ADM ${id}`,
+        });
+      }
+      if (scope === 'both' || scope === 'COGC') {
+        this.steps.push({
+          kind: 'COGC',
+          planetNaturalId: id,
+          command: `COGC ${id}`,
+        });
+      }
     }
     this.stepIndex = 0;
     this.prepared = true;
+    const scopeNote =
+      scope === 'both' ? 'ADM and COGC per planet' : scope === 'ADM' ? 'ADM only' : 'COGC only';
     this.callbacks.onLog(
       'INFO',
-      `Queued ${this.steps.length} tiles. Click "Next step" to process the queue.`,
+      `Queued ${this.steps.length} tiles (${scopeNote}). Click "Next step" to process the queue.`,
     );
   }
 

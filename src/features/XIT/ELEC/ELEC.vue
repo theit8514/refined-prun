@@ -27,6 +27,23 @@ import dayjs from 'dayjs';
 const parameters = useXitParameters();
 const isRefreshMode = computed(() => parameters[0]?.toUpperCase() === 'REFRESH');
 
+type ElecListFilter = 'all' | 'GOV' | 'COGC';
+
+/** `GOV` rows are shown as ADM in the Type column; `GOV` / `ADM` XIT args both filter to those. */
+const listFilter = computed<ElecListFilter>(() => {
+  if (isRefreshMode.value) {
+    return 'all';
+  }
+  const p = parameters[0]?.toUpperCase();
+  if (p === 'COGC') {
+    return 'COGC';
+  }
+  if (p === 'GOV' || p === 'ADM') {
+    return 'GOV';
+  }
+  return 'all';
+});
+
 interface ElectionRow {
   planet: string;
   planetNaturalId: string;
@@ -132,8 +149,23 @@ const rows = computed<ElectionRow[] | undefined>(() => {
   return merged.sort(compareRows);
 });
 
-const showStaleElectionDataNotice = computed(() => {
+const displayedRows = computed<ElectionRow[] | undefined>(() => {
+  if (isRefreshMode.value) {
+    return undefined;
+  }
   const list = rows.value;
+  if (list === undefined) {
+    return undefined;
+  }
+  const f = listFilter.value;
+  if (f === 'all') {
+    return list;
+  }
+  return list.filter(row => row.type === f);
+});
+
+const showStaleElectionDataNotice = computed(() => {
+  const list = displayedRows.value;
   if (!list) {
     return false;
   }
@@ -235,6 +267,15 @@ function openBuffer(command: string) {
 }
 
 function openElectionRefreshBuffer() {
+  const f = listFilter.value;
+  if (f === 'COGC') {
+    void showBuffer('XIT ELEC REFRESH COGC', { force: true });
+    return;
+  }
+  if (f === 'GOV') {
+    void showBuffer('XIT ELEC REFRESH GOV', { force: true });
+    return;
+  }
   void showBuffer('XIT ELEC REFRESH', { force: true });
 }
 
@@ -451,7 +492,7 @@ function pickGovTermForElectionRow(planetTerms: PrunApi.AdminCenterTerm[], atTim
           </tr>
         </thead>
         <tbody>
-          <tr v-for="row in rows" :key="`${row.planetNaturalId}:${row.type}`">
+          <tr v-for="row in displayedRows" :key="`${row.planetNaturalId}:${row.type}`">
             <td>
               <PrunLink inline :command="`PLI ${row.planetNaturalId}`">{{ row.planet }}</PrunLink>
             </td>
@@ -496,7 +537,8 @@ function pickGovTermForElectionRow(planetTerms: PrunApi.AdminCenterTerm[], atTim
 }
 
 .notice {
-  margin: 0 0 0.75rem;
-  line-height: 1.45;
+  margin-top: 0;
+  margin-bottom: 5px;
+  margin-left: 5px;
 }
 </style>

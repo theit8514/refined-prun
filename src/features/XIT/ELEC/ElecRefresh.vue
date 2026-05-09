@@ -9,8 +9,33 @@ import {
   collectElectionRefreshPlanetIds,
 } from '@src/features/XIT/ELEC/elec-refresh-runner';
 import { useTile } from '@src/hooks/use-tile';
+import { useXitParameters } from '@src/hooks/use-xit-parameters';
 
 const tile = useTile();
+const parameters = useXitParameters();
+
+/** Second token after `REFRESH`: `XIT ELEC REFRESH COGC` / `... GOV` / `... ADM`. */
+const refreshQueueScope = computed(() => {
+  const p1 = parameters[1]?.toUpperCase();
+  if (p1 === 'COGC') {
+    return 'COGC' as const;
+  }
+  if (p1 === 'GOV' || p1 === 'ADM') {
+    return 'ADM' as const;
+  }
+  return 'both' as const;
+});
+
+const refreshHeaderTitle = computed(() => {
+  const s = refreshQueueScope.value;
+  if (s === 'COGC') {
+    return 'REFRESH ELECTION DATA (COGC)';
+  }
+  if (s === 'ADM') {
+    return 'REFRESH ELECTION DATA (ADM)';
+  }
+  return 'REFRESH ELECTION DATA';
+});
 
 const busy = ref(false);
 const logScrolling = ref(true);
@@ -83,7 +108,7 @@ function prepareQueue() {
     return;
   }
   clearLog();
-  runner.prepare(planetIds.value);
+  runner.prepare(planetIds.value, refreshQueueScope.value);
   touchQueueRevision();
 }
 
@@ -109,7 +134,7 @@ function resetQueue() {
 
 <template>
   <div :class="$style.root">
-    <Header :class="$style.header">REFRESH ELECTION DATA</Header>
+    <Header :class="$style.header">{{ refreshHeaderTitle }}</Header>
     <LogWindow :messages="logMessages" :scrolling="logScrolling" :class="$style.mainWindow" />
     <div :class="$style.status">
       <span>Status: </span>
