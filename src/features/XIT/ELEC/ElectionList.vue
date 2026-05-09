@@ -60,6 +60,9 @@ const listFilter = computed<ElecListFilter>(() => {
 
 const dayMs = 24 * 60 * 60 * 1000;
 
+/** Same width as GOVERNOR_ELECTED anchor → next window (+28d − +20d). */
+const govVotingWindowMs = dayMs * 8;
+
 const rows = computed<ElectionRow[] | undefined>(() => {
   const now = timestampEachSecond.value;
   const sites = sitesStore.all.value;
@@ -67,8 +70,14 @@ const rows = computed<ElectionRow[] | undefined>(() => {
     return undefined;
   }
 
-  const govElectionTimestampByPlanet = getLatestAlertTimestampByPlanet(
+  const govGovernorElectedByPlanet = getLatestAlertTimestampByPlanet(
     'ADMIN_CENTER_GOVERNOR_ELECTED',
+  );
+  const govElectionStartedByPlanet = getLatestAlertTimestampByPlanet(
+    'ADMIN_CENTER_ELECTION_STARTED',
+  );
+  const govElectionReminderByPlanet = getLatestAlertTimestampByPlanet(
+    'ADMIN_CENTER_ELECTION_REMINDER',
   );
   const cogcElectionTimestampByPlanet = getLatestAlertTimestampByPlanet('COGC_PROGRAM_CHANGED');
   const planetKeyToAdminCenterId = getPlanetKeyToAdminCenterIdMap();
@@ -92,7 +101,9 @@ const rows = computed<ElectionRow[] | undefined>(() => {
   const merged: ElectionRow[] = [];
   for (const planet of map.values()) {
     const planetKey = planet.planetNaturalId.toUpperCase();
-    const govElectionTimestamp = govElectionTimestampByPlanet.get(planetKey);
+    const govGovernorElectedAt = govGovernorElectedByPlanet.get(planetKey);
+    const govElectionStartedAt = govElectionStartedByPlanet.get(planetKey);
+    const govElectionReminderAt = govElectionReminderByPlanet.get(planetKey);
     const cogcElectionTimestamp = cogcElectionTimestampByPlanet.get(planetKey);
 
     const adminCenterId =
@@ -115,9 +126,21 @@ const rows = computed<ElectionRow[] | undefined>(() => {
     }
 
     if (govDateSource !== 'server') {
-      govStart = govElectionTimestamp === undefined ? undefined : govElectionTimestamp + dayMs * 20;
-      govEnd = govElectionTimestamp === undefined ? undefined : govElectionTimestamp + dayMs * 28;
-      govDateSource = 'estimate';
+      if (govElectionStartedAt !== undefined) {
+        govStart = govElectionStartedAt;
+        govEnd = govElectionStartedAt + govVotingWindowMs;
+        govDateSource = 'estimate';
+      } else if (govGovernorElectedAt !== undefined) {
+        govStart = govGovernorElectedAt + dayMs * 20;
+        govEnd = govGovernorElectedAt + dayMs * 28;
+        govDateSource = 'estimate';
+      } else if (govElectionReminderAt !== undefined) {
+        govStart = govElectionReminderAt;
+        govEnd = govElectionReminderAt + govVotingWindowMs;
+        govDateSource = 'estimate';
+      } else {
+        govDateSource = 'estimate';
+      }
     }
 
     merged.push({
