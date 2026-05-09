@@ -17,6 +17,8 @@ import { sitesStore } from '@src/infrastructure/prun-api/data/sites';
 import { storagesStore } from '@src/infrastructure/prun-api/data/storage';
 import { warehousesStore } from '@src/infrastructure/prun-api/data/warehouses';
 import { contractsStore } from '@src/infrastructure/prun-api/data/contracts';
+import '@src/infrastructure/prun-api/data/admin-centers';
+import '@src/infrastructure/prun-api/data/cogc-planets';
 import { fetchPrices } from '@src/infrastructure/fio/cx';
 
 export async function initializeApi() {

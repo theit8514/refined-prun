@@ -26,3 +26,16 @@ export function getMaterialName(material?: PrunApi.Material | null) {
 export function getMaterialByName(name?: string | null) {
   return name ? materialsByName.get(name) : undefined;
 }
+
+export function getCoGCProgramDisplayName(programType: string | undefined | null) {
+  if (!programType) {
+    return undefined;
+  }
+  const mainKey = `CoGCProgram.${programType}_SHORT`;
+  const main = PrunI18N[mainKey]?.[0]?.value;
+  if (main) {
+    return main;
+  }
+  const shortKey = `CoGCProgram.${programType}`;
+  return PrunI18N[shortKey]?.[0]?.value ?? programType;
+}
