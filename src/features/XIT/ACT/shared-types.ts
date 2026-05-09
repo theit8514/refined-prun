@@ -37,6 +37,7 @@ export interface ActionStepGenerateContext<TConfig>
       };
     };
   };
+  mode: 'Pricing' | 'Execution';
 }
 
 export interface ActionStepExecuteContext<T> extends ActionRunnerContext<T> {

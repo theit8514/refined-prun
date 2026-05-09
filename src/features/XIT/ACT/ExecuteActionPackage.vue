@@ -121,6 +121,12 @@ async function onPreviewClick() {
   status.value = undefined;
 }
 
+async function onPriceClick() {
+  logScrolling.value = true;
+  clearLog();
+  await runner.price(pkg, config.value);
+}
+
 function onExecuteClick() {
   logScrolling.value = true;
   clearLog();
@@ -177,11 +183,13 @@ function clearLog() {
       <template v-else-if="isPreviewing">
         <PrunButton v-if="needsConfigure" primary @click="onConfigureClick">CONFIGURE</PrunButton>
         <PrunButton disabled>PREVIEW</PrunButton>
+        <PrunButton disabled>PRICE</PrunButton>
         <PrunButton disabled>EXECUTE</PrunButton>
       </template>
       <template v-else-if="!isRunning">
         <PrunButton v-if="needsConfigure" primary @click="onConfigureClick">CONFIGURE</PrunButton>
         <PrunButton primary @click="onPreviewClick">PREVIEW</PrunButton>
+        <PrunButton primary @click="onPriceClick">PRICE</PrunButton>
         <PrunButton primary :class="$style.executeButton" @click="onExecuteClick">
           EXECUTE
         </PrunButton>
@@ -189,6 +197,7 @@ function clearLog() {
       <template v-else>
         <PrunButton v-if="needsConfigure" primary disabled>CONFIGURE</PrunButton>
         <PrunButton primary disabled>PREVIEW</PrunButton>
+        <PrunButton primary disabled>PRICE</PrunButton>
         <PrunButton
           danger
           :disabled="!actReady"

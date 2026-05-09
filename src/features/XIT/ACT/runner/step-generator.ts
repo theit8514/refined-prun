@@ -23,6 +23,7 @@ export class StepGenerator {
     const state = generateState();
     const steps = [] as ActionStep[];
     let fail = false;
+    const mode = pkg.mode ?? 'Execution';
     for (const action of pkg.actions) {
       const info = act.getActionInfo(action.type);
       if (!info) {
@@ -52,6 +53,7 @@ export class StepGenerator {
           emitStep: step => steps.push(step),
           getMaterialGroup: async name => await this.getMaterialGroup(pkg, config, name),
           state,
+          mode,
         });
       } catch (e) {
         if (e !== AssertionError) {

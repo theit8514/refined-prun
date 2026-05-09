@@ -74,6 +74,40 @@ export class ActionRunner {
     this.stepMachine.start();
   }
 
+  async price(pkg: UserData.ActionPackageData, config: ActionPackageConfig) {
+    if (this.isRunning) {
+      this.log.error('Action Package is already running');
+      return;
+    }
+    // Create a copy to prevent changes during execution.
+    const copy = structuredClone(deepToRaw(pkg));
+    copy.mode = 'Pricing';
+    const { steps, fail } = await this.stepGenerator.generateSteps(copy, config);
+    if (fail) {
+      this.log.error('Action Package execution failed');
+      return;
+    }
+
+    // Filter to only CXPO_OPEN steps
+    const cxpoOpenSteps = steps.filter(step => step.type === 'CXPO_OPEN');
+
+    if (cxpoOpenSteps.length === 0) {
+      this.log.warning('No CX Buy actions found to price check');
+      return;
+    }
+
+    this.log.info(
+      `Action Package pricing started: ${cxpoOpenSteps.length} CXPO buffer(s) to be opened...`,
+    );
+    this.stepMachine = new StepMachine(cxpoOpenSteps, {
+      ...this.options,
+      tileAllocator: this.tileAllocator,
+    });
+    this.stepMachine.start();
+    // Open the first CXPO buffer immediately
+    this.stepMachine.act();
+  }
+
   act() {
     this.stepMachine?.act();
     if (!this.stepMachine?.isRunning) {
