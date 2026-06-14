@@ -117,4 +117,10 @@ declare namespace UserData {
   }
 
   type ExchangeChartType = 'SMOOTH' | 'ALIGNED' | 'RAW';
+
+  interface RepairOverride {
+    planet: string;
+    threshold?: number;
+    offset?: number;
+  }
 }

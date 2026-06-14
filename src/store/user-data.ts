@@ -30,6 +30,7 @@ export const initialUserData = deepFreeze({
     repair: {
       threshold: 60,
       offset: 10,
+      overrides: [] as UserData.RepairOverride[],
     },
     sidebar: [
       ['BS', 'BS'],

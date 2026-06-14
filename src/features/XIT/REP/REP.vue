@@ -7,7 +7,6 @@ import {
   getParameterSites,
 } from '@src/features/XIT/REP/entries';
 import { timestampEachMinute } from '@src/utils/dayjs';
-import { binarySearch } from '@src/utils/binary-search';
 import dayjs from 'dayjs';
 import { fixed1, percent1 } from '@src/utils/format';
 import MaterialPurchaseTable from '@src/components/MaterialPurchaseTable.vue';
@@ -21,6 +20,8 @@ import SectionHeader from '@src/components/SectionHeader.vue';
 import { useXitParameters } from '@src/hooks/use-xit-parameters';
 import PrunLink from '@src/components/PrunLink.vue';
 import { objectId } from '@src/utils/object-id';
+import { sitesStore } from '@src/infrastructure/prun-api/data/sites';
+import { getEntityNaturalIdFromAddress } from '@src/infrastructure/prun-api/data/addresses';
 
 const parameters = useXitParameters();
 
@@ -36,18 +37,53 @@ const shipEntries = computed(() => calculateShipEntries(ships.value));
 
 const msInADay = dayjs.duration(1, 'day').asMilliseconds();
 
-const currentSplitIndex = computed(() => {
+const overrideByNaturalId = computed(() => {
+  const map = new Map<string, UserData.RepairOverride>();
+  for (const o of userData.settings.repair.overrides) {
+    const site = sitesStore.getByPlanetNaturalIdOrName(o.planet);
+    const naturalId = getEntityNaturalIdFromAddress(site?.address);
+    if (naturalId === undefined) {
+      continue;
+    }
+    map.set(naturalId, o);
+  }
+  return map;
+});
+
+function getRepairParams(naturalId: string) {
+  const settings = userData.settings.repair;
+  const o = overrideByNaturalId.value.get(naturalId);
+  return {
+    threshold: o?.threshold ?? settings.threshold,
+    offset: o?.offset ?? settings.offset,
+  };
+}
+
+function allTargetSitesOverride(field: 'threshold' | 'offset') {
+  const s = sites.value;
+  if (parameters.length === 0 || !s || s.length === 0) {
+    return false;
+  }
+  return s.every(site => {
+    const naturalId = getEntityNaturalIdFromAddress(site.address);
+    return (
+      naturalId !== undefined && overrideByNaturalId.value.get(naturalId)?.[field] !== undefined
+    );
+  });
+}
+
+const hideThreshold = computed(() => allTargetSitesOverride('threshold'));
+const hideOffset = computed(() => allTargetSitesOverride('offset'));
+
+const visibleBuildings = computed(() => {
   if (buildingEntries.value === undefined) {
     return undefined;
   }
-  const settings = userData.settings.repair;
-  const currentSplitDate =
-    timestampEachMinute.value - settings.threshold * msInADay + settings.offset * msInADay;
-  return binarySearch(currentSplitDate, buildingEntries.value, x => x.lastRepair);
-});
-
-const visibleBuildings = computed(() => {
-  return buildingEntries.value?.slice(0, currentSplitIndex.value);
+  const now = timestampEachMinute.value;
+  return buildingEntries.value.filter(entry => {
+    const { threshold, offset } = getRepairParams(entry.naturalId);
+    return entry.lastRepair < now - threshold * msInADay + offset * msInADay;
+  });
 });
 
 const visibleShips = computed(() => shipEntries.value?.filter(x => x.condition <= 0.85));
@@ -60,7 +96,7 @@ const materials = computed(() => {
   const time = timestampEachMinute.value;
   for (const building of visibleBuildings.value) {
     const plannedRepairDate =
-      (time - building.lastRepair) / msInADay + userData.settings.repair.offset;
+      (time - building.lastRepair) / msInADay + getRepairParams(building.naturalId).offset;
     for (const { material, amount } of building.fullMaterials) {
       materials.push({
         material,
@@ -80,11 +116,11 @@ function calculateAge(lastRepair: number) {
 <template>
   <LoadingSpinner v-if="materials === undefined" />
   <template v-else>
-    <form>
-      <Active label="Age Threshold">
+    <form v-if="!hideThreshold || !hideOffset">
+      <Active v-if="!hideThreshold" label="Age Threshold">
         <NumberInput v-model="userData.settings.repair.threshold" />
       </Active>
-      <Active label="Time Offset">
+      <Active v-if="!hideOffset" label="Time Offset">
         <NumberInput v-model="userData.settings.repair.offset" />
       </Active>
     </form>

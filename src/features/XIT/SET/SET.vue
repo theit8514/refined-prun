@@ -5,12 +5,18 @@ import GAME from '@src/features/XIT/SET/GAME.vue';
 import FEAT from '@src/features/XIT/SET/FEAT.vue';
 import FIN from '@src/features/XIT/SET/FIN.vue';
 import BFR from '@src/features/XIT/SET/BFR.vue';
+import REP from '@src/features/XIT/SET/REP.vue';
 
 const tabs: Tab[] = [
   {
     id: 'GAME',
     label: 'Gameplay',
     component: GAME,
+  },
+  {
+    id: 'REP',
+    label: 'Repair',
+    component: REP,
   },
   {
     id: 'FEAT',

@@ -16,6 +16,12 @@ function isCheckpoint(entry: MigrationEntry): entry is Checkpoint {
 // New migrations should be added to the top of the list.
 // The date is for reference only, and it does not affect migration order.
 const migrations: MigrationEntry[] = [
+  [
+    '14.06.2026 Add repair overrides',
+    userData => {
+      userData.settings.repair.overrides = [];
+    },
+  ],
   ['10.03.2026 Checkpoint'],
   [
     '10.03.2026 Remove funny-rations',
