@@ -19,7 +19,7 @@ import { alertsStore } from '@src/infrastructure/prun-api/data/alerts';
 import { sitesStore } from '@src/infrastructure/prun-api/data/sites';
 import { userDataStore } from '@src/infrastructure/prun-api/data/user-data';
 import { showBuffer } from '@src/infrastructure/prun-ui/buffers';
-import { getCoGCProgramDisplayName } from '@src/infrastructure/prun-ui/i18n';
+import { lookupLocalization } from '@src/infrastructure/prun-ui/i18n';
 import { useTileState } from '@src/features/XIT/ELEC/tile-state';
 import { timestampEachSecond } from '@src/utils/dayjs';
 import dayjs from 'dayjs';
@@ -261,11 +261,22 @@ function formatFutureDuration(timestamp: number) {
   return `${seconds}s`;
 }
 
+function cogcProgramDisplayName(programType: string | undefined) {
+  if (!programType) {
+    return undefined;
+  }
+  return (
+    lookupLocalization(L.CoGCProgram, `${programType}_SHORT`)() ??
+    lookupLocalization(L.CoGCProgram, programType)() ??
+    programType
+  );
+}
+
 function electionYouColumnCell(row: ElectionRow) {
   if (row.type === 'COGC') {
     switch (row.cogcCompanyVote) {
       case 'voted': {
-        const name = getCoGCProgramDisplayName(row.cogcVotedProgramType);
+        const name = cogcProgramDisplayName(row.cogcVotedProgramType);
         return name !== undefined ? `Voted (${name})` : 'Voted';
       }
       case 'not-voted':
