@@ -3,6 +3,7 @@ import ActionBar from '@src/components/ActionBar.vue';
 import PrunButton from '@src/components/PrunButton.vue';
 import PrunLink from '@src/components/PrunLink.vue';
 import LoadingSpinner from '@src/components/LoadingSpinner.vue';
+import RadioItem from '@src/components/forms/RadioItem.vue';
 import {
   getEntityNameFromAddress,
   getEntityNaturalIdFromAddress,
@@ -19,12 +20,9 @@ import { sitesStore } from '@src/infrastructure/prun-api/data/sites';
 import { userDataStore } from '@src/infrastructure/prun-api/data/user-data';
 import { showBuffer } from '@src/infrastructure/prun-ui/buffers';
 import { getCoGCProgramDisplayName } from '@src/infrastructure/prun-ui/i18n';
-import { useXitParameters } from '@src/hooks/use-xit-parameters';
+import { useTileState } from '@src/features/XIT/ELEC/tile-state';
 import { timestampEachSecond } from '@src/utils/dayjs';
 import dayjs from 'dayjs';
-
-/** `GOV` rows are shown as ADM in the Type column; `GOV` / `ADM` XIT args both filter to those. */
-type ElecListFilter = 'all' | 'GOV' | 'COGC';
 
 interface ElectionRow {
   planet: string;
@@ -45,18 +43,8 @@ interface ElectionRow {
   cogcVotedProgramType?: string;
 }
 
-const parameters = useXitParameters();
-
-const listFilter = computed<ElecListFilter>(() => {
-  const p = parameters[0]?.toUpperCase();
-  if (p === 'COGC') {
-    return 'COGC';
-  }
-  if (p === 'GOV' || p === 'ADM') {
-    return 'GOV';
-  }
-  return 'all';
-});
+const gov = useTileState('gov');
+const cogc = useTileState('cogc');
 
 const dayMs = 24 * 60 * 60 * 1000;
 
@@ -172,11 +160,7 @@ const displayedRows = computed<ElectionRow[] | undefined>(() => {
   if (list === undefined) {
     return undefined;
   }
-  const f = listFilter.value;
-  if (f === 'all') {
-    return list;
-  }
-  return list.filter(row => row.type === f);
+  return list.filter(x => (gov.value && x.type === 'GOV') || (cogc.value && x.type === 'COGC'));
 });
 
 const showStaleElectionDataNotice = computed(() => {
@@ -321,13 +305,15 @@ function onOpenCommand(command: string) {
 }
 
 function onRefreshClick() {
-  const f = listFilter.value;
-  if (f === 'COGC') {
-    void showBuffer('XIT ELEC REFRESH COGC', { force: true });
+  if (!gov.value && !cogc.value) {
     return;
   }
-  if (f === 'GOV') {
+  if (gov.value && !cogc.value) {
     void showBuffer('XIT ELEC REFRESH GOV', { force: true });
+    return;
+  }
+  if (cogc.value && !gov.value) {
+    void showBuffer('XIT ELEC REFRESH COGC', { force: true });
     return;
   }
   void showBuffer('XIT ELEC REFRESH', { force: true });
@@ -483,10 +469,14 @@ function pickGovTermForElectionRow(planetTerms: PrunApi.AdminCenterTerm[], atTim
   <div>
     <ActionBar :class="$style.topActionBar">
       <div />
-      <PrunButton primary @click="onRefreshClick">REFRESH</PrunButton>
+      <PrunButton primary :disabled="!gov && !cogc" @click="onRefreshClick">REFRESH</PrunButton>
     </ActionBar>
     <LoadingSpinner v-if="displayedRows === undefined" />
     <template v-else>
+      <div :class="C.ComExOrdersPanel.filter">
+        <RadioItem v-model="gov" horizontal>GOV</RadioItem>
+        <RadioItem v-model="cogc" horizontal>COGC</RadioItem>
+      </div>
       <p v-if="showStaleElectionDataNotice" :class="$style.notice">
         Data loads from notifications first and may stay <strong>stale</strong> until buffers load:
         governor rows may use estimates or show <strong>Unknown</strong> during an open vote until
