@@ -2,6 +2,7 @@
 import Active from '@src/components/forms/Active.vue';
 import Passive from '@src/components/forms/Passive.vue';
 import SelectInput from '@src/components/forms/SelectInput.vue';
+import RadioItem from '@src/components/forms/RadioItem.vue';
 import { Config } from '@src/features/XIT/ACT/actions/mtra/config';
 import { storagesStore } from '@src/infrastructure/prun-api/data/storage';
 import {
@@ -57,6 +58,19 @@ if (
   config.destination = serializeStorage(destinationStorages.value[0]);
 }
 
+const noLocationsAvailable = computed(() => {
+  const originUnavailable = data.origin === configurableValue && originStorages.value.length === 0;
+  const destUnavailable = data.dest === configurableValue && destinationStorages.value.length === 0;
+  return originUnavailable || destUnavailable;
+});
+
+const skip = computed({
+  get: () => config.skip ?? false,
+  set: value => {
+    config.skip = value || undefined;
+  },
+});
+
 // Autofill and autofix selections on storage list change.
 watchEffect(() => {
   if (data.origin === configurableValue) {
@@ -84,6 +98,10 @@ watchEffect(() => {
       config.destination = serializeStorage(destinationStorages.value[0]);
     }
   }
+
+  if (!noLocationsAvailable.value) {
+    config.skip = undefined;
+  }
 });
 
 function getOptions(storages: PrunApi.Store[]) {
@@ -109,5 +127,11 @@ function getOptions(storages: PrunApi.Store[]) {
     <Passive v-else label="To">
       <span>{{ data.dest }}</span>
     </Passive>
+    <Active
+      v-if="noLocationsAvailable"
+      label="Skip"
+      tooltip="Skip this action when no locations are available.">
+      <RadioItem v-model="skip">skip if unavailable</RadioItem>
+    </Active>
   </form>
 </template>

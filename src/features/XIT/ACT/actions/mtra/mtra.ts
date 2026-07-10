@@ -29,23 +29,31 @@ act.addAction<Config>({
     return data.origin === configurableValue || data.dest === configurableValue;
   },
   isValidConfig: (data, config) => {
+    if (config.skip) {
+      return true;
+    }
     return (
       (data.origin !== configurableValue || config.origin !== undefined) &&
       (data.dest !== configurableValue || config.destination !== undefined)
     );
   },
   generateSteps: async ctx => {
-    const { data, config, getMaterialGroup, emitStep } = ctx;
+    const { data, config, getMaterialGroup, emitStep, log } = ctx;
     const assert: AssertFn = ctx.assert;
 
     const materials = await getMaterialGroup(data.group);
     assert(materials, 'Invalid material group');
 
     const serializedOrigin = data.origin === configurableValue ? config?.origin : data.origin;
+    const serializedDest = data.dest === configurableValue ? config?.destination : data.dest;
+    if ((!serializedOrigin || !serializedDest) && config?.skip) {
+      log.skip('No locations available');
+      return;
+    }
+
     const origin = deserializeStorage(serializedOrigin);
     assert(origin, 'Invalid origin');
 
-    const serializedDest = data.dest === configurableValue ? config?.destination : data.dest;
     const dest = deserializeStorage(serializedDest);
     assert(dest, 'Invalid destination');
 
