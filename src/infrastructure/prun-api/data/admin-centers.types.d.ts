@@ -48,7 +48,7 @@ declare namespace PrunApi {
     end: unknown;
     candidates: AdminCenterElectionCandidate[];
     adminCenterId: string;
-    winners: unknown[];
+    winners: AdminCenterUserProxy[];
     motions: unknown[];
     parliamentSize: number;
     electionOngoing: boolean;

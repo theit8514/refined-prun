@@ -36,7 +36,14 @@ interface ElectionRow {
    * `GOV` only, server term: before election opens — candidacy vs `term.candidates`;
    * once voting has started — ballot from `ADMIN_CENTER_CLIENT_VOTING_DATA`.
    */
-  govYourVote?: 'unknown' | 'upcoming-running' | 'upcoming-not-running' | 'voted' | 'not-voted';
+  govYourVote?:
+    | 'unknown'
+    | 'upcoming-running'
+    | 'upcoming-not-running'
+    /** Not on current ballot, but ran (or held office) in the previous term */
+    | 'upcoming-not-running-prior'
+    | 'voted'
+    | 'not-voted';
   /** `COGC` only: whether `votes` from planet COGC `DATA_DATA` includes this company (after loading COGC). */
   cogcCompanyVote?: 'unknown' | 'voted' | 'not-voted';
   /** `COGC` only: wire `votes[].type` for this company’s latest ballot (when `cogcCompanyVote === 'voted'`). */
@@ -109,7 +116,7 @@ const rows = computed<ElectionRow[] | undefined>(() => {
         govStart = term.electionStart.timestamp;
         govEnd = term.electionEnd.timestamp;
         govDateSource = 'server';
-        govYourVote = govParticipationForTerm(term, now, adminCenterId);
+        govYourVote = govParticipationForTerm(term, now, adminCenterId, terms);
       }
     }
 
@@ -289,6 +296,7 @@ function electionYouColumnCell(row: ElectionRow) {
     case 'upcoming-running':
       return 'Running';
     case 'upcoming-not-running':
+    case 'upcoming-not-running-prior':
       return 'Not running';
     case 'voted':
       return 'Voted';
@@ -334,6 +342,7 @@ function govParticipationForTerm(
   term: PrunApi.AdminCenterTerm,
   atTime: number,
   adminCenterId: string,
+  planetTerms: PrunApi.AdminCenterTerm[],
 ): ElectionRow['govYourVote'] {
   if (term.electionStart === null || term.electionEnd === null) {
     return undefined;
@@ -346,10 +355,31 @@ function govParticipationForTerm(
     }
     const id = uid.toLowerCase();
     const running = term.candidates.some(c => c.user.id.toLowerCase() === id);
-    return running ? 'upcoming-running' : 'upcoming-not-running';
+    if (running) {
+      return 'upcoming-running';
+    }
+    return userRanInPreviousElection(planetTerms, term, id)
+      ? 'upcoming-not-running-prior'
+      : 'upcoming-not-running';
   }
   const recorded = hasUserRecordedVoteForTerm(adminCenterId, term.id);
   return recorded === undefined ? 'unknown' : recorded ? 'voted' : 'not-voted';
+}
+
+/** True if the user was a candidate or winner in the immediately previous term only. */
+function userRanInPreviousElection(
+  planetTerms: PrunApi.AdminCenterTerm[],
+  currentTerm: PrunApi.AdminCenterTerm,
+  userIdLower: string,
+) {
+  const previous = planetTerms.find(t => t.naturalId === currentTerm.naturalId - 1);
+  if (previous === undefined) {
+    return false;
+  }
+  if (previous.candidates.some(c => c.user.id.toLowerCase() === userIdLower)) {
+    return true;
+  }
+  return previous.winners.some(w => w.id.toLowerCase() === userIdLower);
 }
 
 function cogcCompanyParticipationDetails(planetNaturalId: string): {
@@ -531,7 +561,12 @@ function pickGovTermForElectionRow(planetTerms: PrunApi.AdminCenterTerm[], atTim
               <template v-else-if="isPastOrNow(row.electionEnd)">Now</template>
               <template v-else>{{ formatFutureDuration(row.electionEnd) }}</template>
             </td>
-            <td>{{ electionYouColumnCell(row) }}</td>
+            <td
+              :class="{
+                [$style.priorOffice]: row.govYourVote === 'upcoming-not-running-prior',
+              }">
+              {{ electionYouColumnCell(row) }}
+            </td>
           </tr>
         </tbody>
       </table>
@@ -555,5 +590,9 @@ function pickGovTermForElectionRow(planetTerms: PrunApi.AdminCenterTerm[], atTim
   margin-top: 0;
   margin-bottom: 5px;
   margin-left: 5px;
+}
+
+.priorOffice {
+  color: #f7a600;
 }
 </style>
