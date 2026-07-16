@@ -8,7 +8,7 @@ type Option =
       value: string;
     };
 
-defineProps<{ options: Option[] }>();
+const { disabled = false } = defineProps<{ options: Option[]; disabled?: boolean }>();
 
 const value = (option: Option) => (typeof option === 'string' ? option : option.value);
 const label = (option: Option) => (typeof option === 'string' ? option : option.label);
@@ -16,7 +16,7 @@ const label = (option: Option) => (typeof option === 'string' ? option : option.
 
 <template>
   <div :class="$style.container">
-    <select v-model="model" :class="$style.select">
+    <select v-model="model" :disabled="disabled" :class="$style.select">
       <option v-for="option in options" :key="value(option)" :value="value(option)">
         {{ label(option) }}
       </option>
