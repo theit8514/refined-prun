@@ -9,10 +9,17 @@ import {
 import {
   applyBtfDestination,
   applyBtfFuelUsage,
+  applyBtfFtlMode,
   applyBtfOrigin,
+  applyBtfPayloadInventory,
+  applyBtfUseGateways,
   BTF_FUEL_PRESETS,
+  type BtfFtlMode,
   BtfFuelPreset,
-  disableBtfUseGateways,
+  isBtfFtlModeSet,
+  isBtfOriginSet,
+  isBtfPayloadInventorySet,
+  isBtfUseGatewaysEnabled,
   runAndWaitMissionPlanUpdate,
   waitForFuelUsageSlider,
 } from '@src/features/XIT/SRC/configure-btf';
@@ -24,6 +31,9 @@ export interface SrcInputs {
   origin: string;
   destination: string;
   blueprintNaturalId: string;
+  fullInventory: boolean;
+  ftlMode: BtfFtlMode;
+  useGateways: boolean;
 }
 
 export interface SrcStepContext {
@@ -45,6 +55,10 @@ export interface SrcStep {
 function blueprintLabel(naturalId: string) {
   const blueprint = blueprintsStore.getByNaturalId(naturalId);
   return blueprint ? `${blueprint.name} (${blueprint.naturalId})` : naturalId;
+}
+
+function ftlModeStepLabel(mode: BtfFtlMode) {
+  return mode === 'leastJumps' ? 'Least jumps' : 'Shortest FTL';
 }
 
 async function ensureBtfTile(ctx: SrcStepContext, blueprintNaturalId: string) {
@@ -122,9 +136,14 @@ function setBtfOriginStep(inputs: SrcInputs, shield: BluShieldPreset): SrcStep {
     type: 'SET_BTF_ORIGIN',
     description: `BTF ${shield.label}: set origin`,
     execute: async ctx => {
-      const { setStatus, waitAct, complete, fail } = ctx;
+      const { setStatus, waitAct, complete, skip, fail } = ctx;
       const tile = await ensureBtfTile(ctx, blueprintNaturalId);
       if (!tile) {
+        return;
+      }
+
+      if (isBtfOriginSet(tile, origin)) {
+        skip();
         return;
       }
 
@@ -152,6 +171,7 @@ function setBtfDestinationStep(inputs: SrcInputs, shield: BluShieldPreset): SrcS
         return;
       }
 
+      // Always re-set after BLU changes so the mission recalculates.
       await waitAct(`Set destination (${formatAddressTargetLabel(destination)})`);
       setStatus('Searching for destination…');
       const error = await applyBtfDestination(tile, destination);
@@ -171,11 +191,11 @@ function setBtfDestinationStep(inputs: SrcInputs, shield: BluShieldPreset): SrcS
   };
 }
 
-function disableBtfGatewaysStep(inputs: SrcInputs, shield: BluShieldPreset): SrcStep {
-  const { blueprintNaturalId } = inputs;
+function setBtfInventoryStep(inputs: SrcInputs, shield: BluShieldPreset): SrcStep {
+  const { blueprintNaturalId, fullInventory } = inputs;
   return {
-    type: 'DISABLE_BTF_GATEWAYS',
-    description: `BTF ${shield.label}: disable Use gateways`,
+    type: 'SET_BTF_INVENTORY',
+    description: `BTF ${shield.label}: inventory ${fullInventory ? 'full' : 'empty'}`,
     execute: async ctx => {
       const { setStatus, waitAct, complete, skip, fail } = ctx;
       const tile = await ensureBtfTile(ctx, blueprintNaturalId);
@@ -183,26 +203,100 @@ function disableBtfGatewaysStep(inputs: SrcInputs, shield: BluShieldPreset): Src
         return;
       }
 
-      await waitAct('Disable Use gateways');
-      setStatus('Disabling Use gateways…');
-      let clicked = false;
+      if (isBtfPayloadInventorySet(tile, fullInventory)) {
+        skip();
+        return;
+      }
+
+      await waitAct(`Set inventory ${fullInventory ? 'full' : 'empty'}`);
+      setStatus('Setting inventory…');
       const waitError = await runAndWaitMissionPlanUpdate(tile, async () => {
-        const result = await disableBtfUseGateways(tile);
+        const result = await applyBtfPayloadInventory(tile, fullInventory);
         if (result.error) {
           return result.error;
         }
-        clicked = result.clicked;
         return { skipWait: !result.clicked };
       });
       if (waitError) {
         fail(waitError);
         return;
       }
-      if (clicked) {
-        complete();
-      } else {
-        skip();
+      complete();
+    },
+  };
+}
+
+function setBtfFtlModeStep(inputs: SrcInputs, shield: BluShieldPreset): SrcStep {
+  const { blueprintNaturalId, ftlMode } = inputs;
+  return {
+    type: 'SET_BTF_FTL_MODE',
+    description: `BTF ${shield.label}: ${ftlModeStepLabel(ftlMode)}`,
+    execute: async ctx => {
+      const { setStatus, waitAct, complete, skip, fail } = ctx;
+      const tile = await ensureBtfTile(ctx, blueprintNaturalId);
+      if (!tile) {
+        return;
       }
+
+      if (isBtfFtlModeSet(tile, ftlMode)) {
+        skip();
+        return;
+      }
+
+      await waitAct(`Set FTL mode: ${ftlModeStepLabel(ftlMode)}`);
+      setStatus('Setting FTL mode…');
+      const waitError = await runAndWaitMissionPlanUpdate(tile, async () => {
+        const result = applyBtfFtlMode(tile, ftlMode);
+        if (result.error) {
+          return result.error;
+        }
+        return { skipWait: !result.clicked };
+      });
+      if (waitError) {
+        fail(waitError);
+        return;
+      }
+      complete();
+    },
+  };
+}
+
+function setBtfUseGatewaysStep(inputs: SrcInputs, shield: BluShieldPreset): SrcStep {
+  const { blueprintNaturalId, useGateways } = inputs;
+  return {
+    type: 'SET_BTF_USE_GATEWAYS',
+    description: `BTF ${shield.label}: Use Gateway ${useGateways ? 'on' : 'off'}`,
+    execute: async ctx => {
+      const { setStatus, waitAct, complete, skip, fail } = ctx;
+      const tile = await ensureBtfTile(ctx, blueprintNaturalId);
+      if (!tile) {
+        return;
+      }
+
+      const enabled = isBtfUseGatewaysEnabled(tile);
+      if (enabled === undefined) {
+        fail('Use gateways toggle not found');
+        return;
+      }
+      if (enabled === useGateways) {
+        skip();
+        return;
+      }
+
+      await waitAct(`Set Use Gateway ${useGateways ? 'on' : 'off'}`);
+      setStatus('Setting Use Gateway…');
+      const waitError = await runAndWaitMissionPlanUpdate(tile, async () => {
+        const result = await applyBtfUseGateways(tile, useGateways);
+        if (result.error) {
+          return result.error;
+        }
+        return { skipWait: !result.clicked };
+      });
+      if (waitError) {
+        fail(waitError);
+        return;
+      }
+      complete();
     },
   };
 }
@@ -282,7 +376,9 @@ export function buildSrcSteps(inputs: SrcInputs): SrcStep[] {
     steps.push(openBtfStep(blueprintNaturalId, shield));
     steps.push(setBtfOriginStep(inputs, shield));
     steps.push(setBtfDestinationStep(inputs, shield));
-    steps.push(disableBtfGatewaysStep(inputs, shield));
+    steps.push(setBtfInventoryStep(inputs, shield));
+    steps.push(setBtfFtlModeStep(inputs, shield));
+    steps.push(setBtfUseGatewaysStep(inputs, shield));
     for (const fuel of BTF_FUEL_PRESETS) {
       steps.push(configureBtfFuelStep(inputs, shield, fuel));
     }

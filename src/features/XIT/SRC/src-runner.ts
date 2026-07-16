@@ -1,5 +1,5 @@
 import { Logger } from '@src/features/XIT/ACT/runner/logger';
-import { TileAllocator } from '@src/features/XIT/ACT/runner/tile-allocator';
+import { SrcTileAllocator } from '@src/features/XIT/SRC/src-tile-allocator';
 import { buildSrcSteps, SrcInputs, SrcStep } from '@src/features/XIT/SRC/steps';
 import { sleep } from '@src/utils/sleep';
 
@@ -14,13 +14,13 @@ interface SrcRunnerOptions {
 }
 
 export class SrcRunner {
-  private allocator: TileAllocator;
+  private allocator: SrcTileAllocator;
   private steps: SrcStep[] = [];
   private current?: SrcStep;
   private nextAct?: () => void;
 
   constructor(private options: SrcRunnerOptions) {
-    this.allocator = new TileAllocator({
+    this.allocator = new SrcTileAllocator({
       tile: options.tile,
       onBufferSplit: () => options.onBufferSplit(),
     });

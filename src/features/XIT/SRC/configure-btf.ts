@@ -1,5 +1,9 @@
-import { changeInputValue, clickElement, focusElement } from '@src/util';
-import { getAddressMatchTerms, getAddressSearchQuery } from '@src/features/XIT/SRC/address-target';
+import { changeInputValue, changeSelectIndex, clickElement, focusElement } from '@src/util';
+import {
+  getAddressMatchTerms,
+  getAddressSearchQuery,
+  getAddressSelectedMatchTerms,
+} from '@src/features/XIT/SRC/address-target';
 import { sleep } from '@src/utils/sleep';
 
 export interface BtfFuelPreset {
@@ -37,10 +41,15 @@ function findFormRow(tile: PrunTile, labelText: string | undefined) {
 
 function findMatchingSuggestion(suggestionsList: Element, naturalId: string) {
   const terms = getAddressMatchTerms(naturalId);
-  return _$$(suggestionsList, C.AddressSelector.suggestion).find(x => {
-    const text = x.textContent ?? '';
-    return terms.some(term => text.includes(term));
-  });
+  const suggestions = _$$(suggestionsList, C.AddressSelector.suggestion);
+  // Prefer earlier terms (station name before id) across the whole list.
+  for (const term of terms) {
+    const match = suggestions.find(x => (x.textContent ?? '').includes(term));
+    if (match) {
+      return match;
+    }
+  }
+  return undefined;
 }
 
 /** Wait until the portalled address search finishes and a matching row appears. */
@@ -221,6 +230,24 @@ export async function applyBtfDestination(tile: PrunTile, destination: string) {
   return selectAddress(destinationRow, destination);
 }
 
+/** True when the BTF origin AddressSelector already shows the given target. */
+export function isBtfOriginSet(tile: PrunTile, naturalId: string) {
+  const originRow = findFormRow(tile, L.BlueprintTestFlight.label.origin());
+  if (!originRow) {
+    return false;
+  }
+  const container =
+    (_$(originRow, C.AddressSelector.container) as HTMLElement | undefined) ?? originRow;
+  const input = _$(container, C.AddressSelector.input) as HTMLInputElement | undefined;
+  // Selected CXs display the system code (e.g. ZV-307) in the input, not the station name.
+  const value = input?.value?.trim() ?? '';
+  if (value !== '' && getAddressSelectedMatchTerms(naturalId).includes(value)) {
+    return true;
+  }
+  const text = container.textContent?.trim() ?? '';
+  return getAddressSelectedMatchTerms(naturalId).some(term => text === term || text.includes(term));
+}
+
 export async function applyBtfFuelUsage(tile: PrunTile, percent: 0 | 50 | 100) {
   const waitError = await waitForFuelUsageSlider(tile);
   if (waitError) {
@@ -339,7 +366,10 @@ export async function runAndWaitMissionPlanUpdate(
 }
 
 function findUseGatewaysToggle(tile: PrunTile) {
-  const labelText = L.RoutePreferencesSelect.label.useGateways();
+  return findRadioItem(tile, L.RoutePreferencesSelect.label.useGateways());
+}
+
+function findRadioItem(tile: PrunTile, labelText: string | undefined) {
   if (!labelText) {
     return undefined;
   }
@@ -355,22 +385,149 @@ function findUseGatewaysToggle(tile: PrunTile) {
   return (value.closest(`.${C.RadioItem.container}`) as HTMLElement | null) ?? undefined;
 }
 
-function isUseGatewaysEnabled(toggle: HTMLElement) {
+function isRadioItemActive(toggle: HTMLElement) {
   return toggle.classList.contains(C.RadioItem.active) || !!_$(toggle, C.RadioItem.active);
 }
 
-/**
- * Disable Use gateways under FTL preferences.
- * Returns whether a click was performed (false = already off).
- */
-export async function disableBtfUseGateways(tile: PrunTile) {
-  const toggle = findUseGatewaysToggle(tile);
+async function setRadioItem(tile: PrunTile, labelText: string | undefined, enabled: boolean) {
+  const toggle = findRadioItem(tile, labelText);
   if (!toggle) {
-    return { error: 'Use gateways toggle not found', clicked: false };
+    return { error: `Option not found: ${labelText ?? '?'}`, clicked: false };
   }
-  if (!isUseGatewaysEnabled(toggle)) {
+  if (isRadioItemActive(toggle) === enabled) {
     return { error: undefined, clicked: false };
   }
   await clickElement(toggle);
   return { error: undefined, clicked: true };
+}
+
+function findPayloadRow(tile: PrunTile) {
+  return findFormRow(tile, L.BlueprintTestFlight.label.payload());
+}
+
+function getSliderPercent(slider: HTMLElement) {
+  const handle = _$(slider, 'rc-slider-handle') as HTMLElement | undefined;
+  if (!handle) {
+    return undefined;
+  }
+  // Prefer visual position — inventory uses absolute tons in aria-valuenow.
+  const left = handle.style.left;
+  if (left.endsWith('%')) {
+    const value = parseFloat(left);
+    return Number.isFinite(value) ? value : undefined;
+  }
+  const aria = handle.getAttribute('aria-valuenow');
+  if (aria === null || aria === '') {
+    return undefined;
+  }
+  const value = Number(aria);
+  const min = Number(handle.getAttribute('aria-valuemin') ?? '0');
+  const max = Number(handle.getAttribute('aria-valuemax') ?? '100');
+  if (!Number.isFinite(value) || !Number.isFinite(min) || !Number.isFinite(max) || max === min) {
+    return undefined;
+  }
+  return ((value - min) / (max - min)) * 100;
+}
+
+async function setPayloadInventory(tile: PrunTile, full: boolean) {
+  const row = findPayloadRow(tile);
+  if (!row) {
+    return { error: 'Inventory field not found', clicked: false };
+  }
+  const slider = findFuelUsageSlider(row);
+  if (!slider) {
+    return { error: 'Inventory slider not found', clicked: false };
+  }
+
+  const desired = full ? 100 : 0;
+  const current = getSliderPercent(slider);
+  if (current !== undefined && Math.abs(current - desired) < 1) {
+    return { error: undefined, clicked: false };
+  }
+
+  await clickSliderAtPercent(slider, desired);
+  return { error: undefined, clicked: true };
+}
+
+export function isBtfPayloadInventorySet(tile: PrunTile, full: boolean) {
+  const row = findPayloadRow(tile);
+  const slider = row ? findFuelUsageSlider(row) : undefined;
+  if (!slider) {
+    return false;
+  }
+  const desired = full ? 100 : 0;
+  const current = getSliderPercent(slider);
+  return current !== undefined && Math.abs(current - desired) < 1;
+}
+
+export async function applyBtfPayloadInventory(tile: PrunTile, full: boolean) {
+  return setPayloadInventory(tile, full);
+}
+
+function findFtlPreferencesSelect(tile: PrunTile) {
+  const row = findFormRow(tile, L.BlueprintTestFlight.label.ftlPreferences());
+  if (!row) {
+    return undefined;
+  }
+  const container = _$(row, C.RoutePreferencesSelect.container) ?? row;
+  return (container.querySelector('select') ?? _$(container, 'select')) as
+    | HTMLSelectElement
+    | undefined;
+}
+
+function ftlModeLabel(mode: BtfFtlMode) {
+  return mode === 'leastJumps'
+    ? L.RoutePreferencesSelect.value.leastJumps()
+    : L.RoutePreferencesSelect.value.shortestFTL();
+}
+
+function findFtlModeOptionIndex(select: HTMLSelectElement, mode: BtfFtlMode) {
+  const label = ftlModeLabel(mode)?.trim();
+  if (!label) {
+    return -1;
+  }
+  return Array.from(select.options).findIndex(x => x.textContent?.trim() === label);
+}
+
+export function isBtfFtlModeSet(tile: PrunTile, mode: BtfFtlMode) {
+  const select = findFtlPreferencesSelect(tile);
+  if (!select) {
+    return false;
+  }
+  const index = findFtlModeOptionIndex(select, mode);
+  return index >= 0 && select.selectedIndex === index;
+}
+
+export function applyBtfFtlMode(tile: PrunTile, mode: BtfFtlMode) {
+  const select = findFtlPreferencesSelect(tile);
+  if (!select) {
+    return { error: 'FTL preferences dropdown not found', clicked: false };
+  }
+  const index = findFtlModeOptionIndex(select, mode);
+  if (index < 0) {
+    return { error: `FTL mode option not found: ${ftlModeLabel(mode) ?? mode}`, clicked: false };
+  }
+  if (select.selectedIndex === index) {
+    return { error: undefined, clicked: false };
+  }
+  changeSelectIndex(select, index);
+  return { error: undefined, clicked: true };
+}
+
+export type BtfFtlMode = 'leastJumps' | 'shortestFTL';
+
+export function isBtfUseGatewaysEnabled(tile: PrunTile) {
+  const toggle = findUseGatewaysToggle(tile);
+  if (!toggle) {
+    return undefined;
+  }
+  return isRadioItemActive(toggle);
+}
+
+export async function applyBtfUseGateways(tile: PrunTile, enabled: boolean) {
+  return setRadioItem(tile, L.RoutePreferencesSelect.label.useGateways(), enabled);
+}
+
+export async function disableBtfUseGateways(tile: PrunTile) {
+  return applyBtfUseGateways(tile, false);
 }

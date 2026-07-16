@@ -4,11 +4,13 @@ import Header from '@src/components/Header.vue';
 import PrunButton from '@src/components/PrunButton.vue';
 import Active from '@src/components/forms/Active.vue';
 import ComboboxInput from '@src/components/forms/ComboboxInput.vue';
+import RadioItem from '@src/components/forms/RadioItem.vue';
 import SelectInput from '@src/components/forms/SelectInput.vue';
 import LogWindow from '@src/features/XIT/ACT/LogWindow.vue';
 import type { LogTag } from '@src/features/XIT/ACT/runner/logger';
 import { Logger } from '@src/features/XIT/ACT/runner/logger';
 import { SrcRunner } from '@src/features/XIT/SRC/src-runner';
+import type { BtfFtlMode } from '@src/features/XIT/SRC/configure-btf';
 import { formatAddressTargetLabel } from '@src/features/XIT/SRC/address-target';
 import { blueprintsStore } from '@src/infrastructure/prun-api/data/blueprints';
 import { planetsStore } from '@src/infrastructure/prun-api/data/planets';
@@ -23,6 +25,14 @@ const tile = useTile();
 const origin = useTileState('origin', '');
 const destination = useTileState('destination', '');
 const blueprintNaturalId = useTileState('blueprintNaturalId', '');
+const fullInventory = useTileState('fullInventory', true);
+const ftlMode = useTileState('ftlMode', 'leastJumps' as BtfFtlMode);
+const useGateways = useTileState('useGateways', false);
+
+const ftlModeOptions: { label: string; value: BtfFtlMode }[] = [
+  { label: 'Least jumps', value: 'leastJumps' },
+  { label: 'Shortest FTL', value: 'shortestFTL' },
+];
 
 const addressOptions = computed(() => {
   const stations = (stationsStore.all.value ?? [])
@@ -96,7 +106,7 @@ const canCollect = computed(() => {
 
 const goingToSplit = ref(false);
 const logScrolling = ref(true);
-const log = ref<Array<{ tag: LogTag; message: string }>>([]);
+const log = ref([] as { tag: LogTag; message: string }[]);
 const isRunning = ref(false);
 const inputsLocked = computed(() => isRunning.value);
 const status = ref<string | undefined>(undefined);
@@ -138,6 +148,9 @@ function onCollectClick() {
     origin: origin.value,
     destination: destination.value,
     blueprintNaturalId: blueprintNaturalId.value,
+    fullInventory: fullInventory.value,
+    ftlMode: ftlMode.value,
+    useGateways: useGateways.value,
   });
 }
 
@@ -190,6 +203,13 @@ function clearLog() {
           :options="blueprintOptions"
           :disabled="inputsLocked" />
       </Active>
+      <Active label="FTL mode">
+        <SelectInput v-model="ftlMode" :options="ftlModeOptions" :disabled="inputsLocked" />
+      </Active>
+      <div :class="[$style.options, inputsLocked && $style.locked]">
+        <RadioItem v-model="fullInventory" horizontal>Full Inventory</RadioItem>
+        <RadioItem v-model="useGateways" horizontal>Use Gateway</RadioItem>
+      </div>
     </form>
     <LogWindow :messages="log" :scrolling="logScrolling" :class="$style.mainWindow" />
     <div :class="$style.status">
@@ -233,6 +253,19 @@ function clearLog() {
 .form {
   margin-left: 4px;
   margin-bottom: 4px;
+}
+
+.options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  margin-top: 4px;
+  align-items: center;
+}
+
+.locked {
+  pointer-events: none;
+  opacity: 0.6;
 }
 
 .mainWindow {

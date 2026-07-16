@@ -17,7 +17,8 @@ export function formatAddressTargetLabel(naturalId: string) {
 export function getAddressSearchQuery(naturalId: string) {
   const station = stationsStore.getByNaturalId(naturalId);
   if (station) {
-    return station.naturalId;
+    // Station name ranks first in BTF address search; system codes match planets (e.g. ZV-307 → ZV-307e).
+    return station.name;
   }
 
   const planet = planetsStore.getByNaturalId(naturalId);
@@ -27,10 +28,7 @@ export function getAddressSearchQuery(naturalId: string) {
 export function getAddressMatchTerms(naturalId: string) {
   const station = stationsStore.getByNaturalId(naturalId);
   if (station) {
-    const systemNaturalId = getSystemLineFromAddress(station.address)?.entity.naturalId;
-    return [station.naturalId, station.name, systemNaturalId].filter(
-      (x): x is string => x !== undefined,
-    );
+    return [station.name, station.naturalId];
   }
 
   const planet = planetsStore.getByNaturalId(naturalId);
@@ -39,4 +37,17 @@ export function getAddressMatchTerms(naturalId: string) {
   }
 
   return [naturalId];
+}
+
+/** Terms that appear in the AddressSelector after a target is selected (CXs show system id). */
+export function getAddressSelectedMatchTerms(naturalId: string) {
+  const station = stationsStore.getByNaturalId(naturalId);
+  if (station) {
+    const systemNaturalId = getSystemLineFromAddress(station.address)?.entity.naturalId;
+    return [station.name, station.naturalId, systemNaturalId].filter(
+      (x): x is string => x !== undefined,
+    );
+  }
+
+  return getAddressMatchTerms(naturalId);
 }
