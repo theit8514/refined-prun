@@ -164,12 +164,47 @@ export function findBluSaveButton(tile: PrunTile) {
   return _$$(tile.anchor, C.Button.btn).find(x => x.textContent?.trim() === saveLabel);
 }
 
-function isBluSaveDisabled(button: HTMLElement) {
+export function isBluSaveDisabled(button: HTMLElement) {
   return (
     button.classList.contains(C.Button.disabled) ||
     button.classList.contains(C.Button.disabledInline) ||
     (button as HTMLButtonElement).disabled
   );
+}
+
+/** True when Save is present and enabled (unsaved shield edits). */
+export function isBluSaveNeeded(tile: PrunTile) {
+  const button = findBluSaveButton(tile);
+  return !!button && !isBluSaveDisabled(button);
+}
+
+/** Wait until Save is enabled after shield edits (React may enable asynchronously). */
+export async function waitBluSaveNeeded(tile: PrunTile, timeoutMs = 10_000) {
+  if (isBluSaveNeeded(tile)) {
+    return undefined;
+  }
+
+  const button = findBluSaveButton(tile);
+  if (!button) {
+    return 'Save button not found';
+  }
+
+  return await new Promise<string | undefined>(resolve => {
+    const timeout = setTimeout(() => {
+      observer.disconnect();
+      resolve('Save did not become enabled after shield change');
+    }, timeoutMs);
+
+    const observer = new MutationObserver(() => {
+      if (isBluSaveNeeded(tile)) {
+        clearTimeout(timeout);
+        observer.disconnect();
+        resolve(undefined);
+      }
+    });
+    observer.observe(button, { attributes: true, attributeFilter: ['class', 'disabled'] });
+    observer.observe(tile.anchor, { childList: true, subtree: true, attributes: true });
+  });
 }
 
 /** BLU save has no ActionFeedback overlay — success is Save becoming disabled. */

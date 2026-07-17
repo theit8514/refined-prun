@@ -3,8 +3,10 @@ import {
   BLU_SHIELD_PRESETS,
   BluShieldPreset,
   clickBluSave,
+  isBluSaveNeeded,
   isBluShieldPresetAlreadyApplied,
   waitBluSaveComplete,
+  waitBluSaveNeeded,
 } from '@src/features/XIT/SRC/configure-blu';
 import {
   applyBtfDestination,
@@ -72,35 +74,82 @@ async function ensureBtfTile(ctx: SrcStepContext, blueprintNaturalId: string) {
   return tile;
 }
 
-function configureBluStep(blueprintNaturalId: string, preset: BluShieldPreset): SrcStep {
+async function ensureBluTile(ctx: SrcStepContext, blueprintNaturalId: string) {
+  const { requestTile, setStatus } = ctx;
+  const tile = await requestTile(`BLU ${blueprintNaturalId}`);
+  if (!tile) {
+    return undefined;
+  }
+  setStatus('Waiting for blueprint form…');
+  await $(tile.anchor, C.Blueprint.form);
+  return tile;
+}
+
+function setBluShieldsStep(
+  blueprintNaturalId: string,
+  preset: BluShieldPreset,
+  markPendingSave: () => void,
+): SrcStep {
   return {
-    type: 'CONFIGURE_BLU',
-    description: `Configure BLU shields: ${preset.label}`,
+    type: 'SET_BLU_SHIELDS',
+    description: `Set BLU shields: ${preset.label}`,
     execute: async ctx => {
-      const { setStatus, waitAct, requestTile, complete, skip, fail } = ctx;
-      const tile = await requestTile(`BLU ${blueprintNaturalId}`);
+      const { setStatus, waitAct, complete, skip, fail } = ctx;
+      const tile = await ensureBluTile(ctx, blueprintNaturalId);
       if (!tile) {
         return;
       }
-
-      // Wait until the blueprint form is fully mounted before mutating selects.
-      setStatus('Waiting for blueprint form…');
-      await $(tile.anchor, C.Blueprint.form);
 
       if (isBluShieldPresetAlreadyApplied(tile, preset.shields)) {
         skip();
         return;
       }
 
+      await waitAct(`Set shields: ${preset.label}`);
       setStatus(`Setting shields: ${preset.label}`);
       const applyError = applyBluShieldConfig(tile, preset.shields);
       if (applyError) {
         fail(applyError);
         return;
       }
+      // Selects now match the preset, so Save must not be skipped for looking "already valid".
+      markPendingSave();
+      complete();
+    },
+  };
+}
+
+function saveBluStep(
+  blueprintNaturalId: string,
+  preset: BluShieldPreset,
+  consumePendingSave: () => boolean,
+): SrcStep {
+  return {
+    type: 'SAVE_BLU',
+    description: `Save BLU: ${preset.label}`,
+    execute: async ctx => {
+      const { setStatus, waitAct, complete, skip, fail } = ctx;
+      const tile = await ensureBluTile(ctx, blueprintNaturalId);
+      if (!tile) {
+        return;
+      }
+
+      const pendingFromSet = consumePendingSave();
+      // Skip only when SET was skipped. After SET, always require Save ACT.
+      if (!pendingFromSet && !isBluSaveNeeded(tile)) {
+        skip();
+        return;
+      }
 
       await waitAct(`Save blueprint (${preset.label})`);
       setStatus('Saving blueprint…');
+      if (!isBluSaveNeeded(tile)) {
+        const dirtyError = await waitBluSaveNeeded(tile);
+        if (dirtyError) {
+          fail(dirtyError);
+          return;
+        }
+      }
       const saveError = await clickBluSave(tile);
       if (saveError) {
         fail(saveError);
@@ -333,6 +382,17 @@ function configureBtfFuelStep(
 
 export function buildSrcSteps(inputs: SrcInputs): SrcStep[] {
   const { origin, destination, blueprintNaturalId } = inputs;
+  // SET_BLU_SHIELDS → SAVE_BLU: Save must not skip just because selects already match the preset.
+  let pendingBluSave = false;
+  const markPendingSave = () => {
+    pendingBluSave = true;
+  };
+  const consumePendingSave = () => {
+    const pending = pendingBluSave;
+    pendingBluSave = false;
+    return pending;
+  };
+
   const steps: SrcStep[] = [
     {
       type: 'ENSURE_BLUEPRINTS',
@@ -372,7 +432,8 @@ export function buildSrcSteps(inputs: SrcInputs): SrcStep[] {
   ];
 
   for (const shield of BLU_SHIELD_PRESETS) {
-    steps.push(configureBluStep(blueprintNaturalId, shield));
+    steps.push(setBluShieldsStep(blueprintNaturalId, shield, markPendingSave));
+    steps.push(saveBluStep(blueprintNaturalId, shield, consumePendingSave));
     steps.push(openBtfStep(blueprintNaturalId, shield));
     steps.push(setBtfOriginStep(inputs, shield));
     steps.push(setBtfDestinationStep(inputs, shield));
