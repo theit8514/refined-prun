@@ -4,7 +4,6 @@ import {
   getAddressSearchQuery,
   getAddressSelectedMatchTerms,
 } from '@src/features/XIT/SRC/address-target';
-import { sleep } from '@src/utils/sleep';
 
 export interface BtfFuelPreset {
   id: string;
@@ -173,27 +172,86 @@ export async function waitForFuelUsageSlider(tile: PrunTile) {
   }
 }
 
-async function clickSliderAtPercent(slider: HTMLElement, percent: 0 | 50 | 100) {
-  const rail = (_$(slider, 'rc-slider-rail') ?? slider) as HTMLElement;
-  const ratio = percent / 100;
-  const rect = rail.getBoundingClientRect();
-  const clientX = rect.left + rect.width * ratio;
-  const clientY = rect.top + rect.height / 2;
-  const eventInit: MouseEventInit = {
-    bubbles: true,
-    cancelable: true,
-    clientX,
-    clientY,
-    view: window,
-  };
-
-  for (const type of ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click'] as const) {
-    rail.dispatchEvent(new MouseEvent(type, eventInit));
-    await sleep(0);
-  }
+interface RcSliderProps {
+  value?: number;
+  min?: number;
+  max?: number;
+  step?: number;
+  onChange?: (value: number) => void;
+  onChangeComplete?: (value: number) => void;
+  onAfterChange?: (value: number) => void;
 }
 
-async function setFuelUsage(tile: PrunTile, percent: 0 | 50 | 100) {
+function getRcSliderProps(slider: HTMLElement): RcSliderProps | undefined {
+  const key = Object.keys(slider).find(
+    x => x.startsWith('__reactFiber') || x.startsWith('__reactInternalInstance'),
+  );
+  if (!key) {
+    return undefined;
+  }
+
+  let fiber = (
+    slider as unknown as Record<string, { return?: unknown; memoizedProps?: RcSliderProps }>
+  )[key];
+  for (let i = 0; i < 20 && fiber; i++, fiber = fiber.return as typeof fiber) {
+    const props = fiber.memoizedProps;
+    if (props && typeof props.onChange === 'function') {
+      return props;
+    }
+  }
+  return undefined;
+}
+
+function snapSliderValue(value: number, min: number, max: number, step: number) {
+  const steps = Math.round((value - min) / step);
+  const snapped = min + steps * step;
+  // Avoid float drift (e.g. 0.30000000000000004).
+  const precision = Math.max(0, Math.round(-Math.log10(step)));
+  const rounded = Number(snapped.toFixed(precision));
+  return Math.min(max, Math.max(min, rounded));
+}
+
+/** Map 0/50/100 presets onto slider min/mid/max via React props (one server round-trip). */
+function setRcSliderPercent(slider: HTMLElement, percent: 0 | 50 | 100) {
+  const props = getRcSliderProps(slider);
+  if (!props?.onChange) {
+    return 'Slider React props not found';
+  }
+
+  const min = Number(props.min ?? 0);
+  const max = Number(props.max ?? 1);
+  const step = Number(props.step ?? 0.01);
+  if (
+    !Number.isFinite(min) ||
+    !Number.isFinite(max) ||
+    max === min ||
+    !Number.isFinite(step) ||
+    step <= 0
+  ) {
+    return 'Invalid slider range';
+  }
+
+  let raw: number;
+  if (percent === 0) {
+    raw = min;
+  } else if (percent === 100) {
+    raw = max;
+  } else if (max <= 1 && 0.5 >= min && 0.5 <= max) {
+    // Fuel scale is ~0–1; prefer exact 0.5 over range midpoint (which snaps to 0.51).
+    raw = 0.5;
+  } else {
+    raw = min + (max - min) / 2;
+  }
+
+  const value = snapSliderValue(raw, min, max, step);
+  props.onChange(value);
+  // onChange updates the handle; complete/after triggers the MissionPlan server call.
+  props.onChangeComplete?.(value);
+  props.onAfterChange?.(value);
+  return undefined;
+}
+
+function setFuelUsage(tile: PrunTile, percent: 0 | 50 | 100) {
   const row = findFuelUsageRow(tile);
   if (!row) {
     return 'Fuel usage field not found';
@@ -201,8 +259,7 @@ async function setFuelUsage(tile: PrunTile, percent: 0 | 50 | 100) {
 
   const slider = findFuelUsageSlider(row);
   if (slider) {
-    await clickSliderAtPercent(slider, percent);
-    return undefined;
+    return setRcSliderPercent(slider, percent);
   }
 
   const input = _$(row, 'input') as HTMLInputElement | undefined;
@@ -445,8 +502,8 @@ async function setPayloadInventory(tile: PrunTile, full: boolean) {
     return { error: undefined, clicked: false };
   }
 
-  await clickSliderAtPercent(slider, desired);
-  return { error: undefined, clicked: true };
+  const error = setRcSliderPercent(slider, desired);
+  return { error, clicked: !error };
 }
 
 export function isBtfPayloadInventorySet(tile: PrunTile, full: boolean) {
