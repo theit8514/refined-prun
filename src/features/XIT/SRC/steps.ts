@@ -18,6 +18,7 @@ import {
   BTF_FUEL_PRESETS,
   type BtfFtlMode,
   BtfFuelPreset,
+  ensureBtfRouteMatches,
   isBtfFtlModeSet,
   isBtfOriginSet,
   isBtfPayloadInventorySet,
@@ -394,6 +395,23 @@ export function buildSrcSteps(inputs: SrcInputs): SrcStep[] {
   };
 
   const steps: SrcStep[] = [
+    {
+      type: 'ENSURE_BTF_ROUTE',
+      description: 'Check BTF route',
+      execute: async ctx => {
+        const { setStatus, complete, fail, log } = ctx;
+        setStatus('Checking BTF route…');
+        const result = await ensureBtfRouteMatches(blueprintNaturalId, origin, destination);
+        if (result.error) {
+          fail(result.error);
+          return;
+        }
+        if (result.cleared) {
+          log.info('Cleared BTF buffer (origin/destination mismatch)');
+        }
+        complete();
+      },
+    },
     {
       type: 'ENSURE_BLUEPRINTS',
       description: `${formatAddressTargetLabel(origin)} → ${formatAddressTargetLabel(destination)}`,

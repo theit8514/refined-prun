@@ -4,6 +4,9 @@ import {
   getAddressSearchQuery,
   getAddressSelectedMatchTerms,
 } from '@src/features/XIT/SRC/address-target';
+import { UI_TILES_CHANGE_COMMAND } from '@src/infrastructure/prun-api/client-messages';
+import { dispatchClientPrunMessage } from '@src/infrastructure/prun-api/prun-api-listener';
+import { sleep } from '@src/utils/sleep';
 
 export interface BtfFuelPreset {
   id: string;
@@ -289,12 +292,24 @@ export async function applyBtfDestination(tile: PrunTile, destination: string) {
 
 /** True when the BTF origin AddressSelector already shows the given target. */
 export function isBtfOriginSet(tile: PrunTile, naturalId: string) {
-  const originRow = findFormRow(tile, L.BlueprintTestFlight.label.origin());
-  if (!originRow) {
+  return isBtfAddressSet(tile, L.BlueprintTestFlight.label.origin(), naturalId);
+}
+
+/** True when the BTF destination AddressSelector already shows the given target. */
+export function isBtfDestinationSet(tile: PrunTile, naturalId: string) {
+  return isBtfAddressSet(tile, L.BlueprintTestFlight.label.destination(), naturalId);
+}
+
+export function isBtfRouteSet(tile: PrunTile, origin: string, destination: string) {
+  return isBtfOriginSet(tile, origin) && isBtfDestinationSet(tile, destination);
+}
+
+function isBtfAddressSet(tile: PrunTile, label: string | undefined, naturalId: string) {
+  const row = findFormRow(tile, label);
+  if (!row) {
     return false;
   }
-  const container =
-    (_$(originRow, C.AddressSelector.container) as HTMLElement | undefined) ?? originRow;
+  const container = (_$(row, C.AddressSelector.container) as HTMLElement | undefined) ?? row;
   const input = _$(container, C.AddressSelector.input) as HTMLInputElement | undefined;
   // Selected CXs display the system code (e.g. ZV-307) in the input, not the station name.
   const value = input?.value?.trim() ?? '';
@@ -303,6 +318,53 @@ export function isBtfOriginSet(tile: PrunTile, naturalId: string) {
   }
   const text = container.textContent?.trim() ?? '';
   return getAddressSelectedMatchTerms(naturalId).some(term => text === term || text.includes(term));
+}
+
+/** Clear a BTF tile via the : control (same as changing buffer command). */
+export async function clearBtfBuffer(tile: PrunTile) {
+  const tileEl = tile.frame.parentElement;
+  if (!tileEl) {
+    return 'Tile element not found';
+  }
+
+  const message = UI_TILES_CHANGE_COMMAND(tile.id, null);
+  if (!dispatchClientPrunMessage(message)) {
+    const changeButton = _$$(tileEl, C.TileControls.control).find(x => x.textContent === ':');
+    if (!changeButton) {
+      return 'Tile clear button not found';
+    }
+    await clickElement(changeButton);
+  } else {
+    await sleep(0);
+  }
+
+  await $(tileEl, C.PanelSelector.input);
+  return undefined;
+}
+
+export async function ensureBtfRouteMatches(
+  blueprintNaturalId: string,
+  origin: string,
+  destination: string,
+) {
+  const tile = tiles.find(`BTF ${blueprintNaturalId}`, true)[0];
+  if (!tile) {
+    return { cleared: false };
+  }
+
+  try {
+    await $(tile.anchor, C.AddressSelector.container);
+  } catch {
+    const error = await clearBtfBuffer(tile);
+    return { cleared: !error, error };
+  }
+
+  if (isBtfRouteSet(tile, origin, destination)) {
+    return { cleared: false };
+  }
+
+  const error = await clearBtfBuffer(tile);
+  return { cleared: !error, error };
 }
 
 export async function applyBtfFuelUsage(tile: PrunTile, percent: 0 | 50 | 100) {
