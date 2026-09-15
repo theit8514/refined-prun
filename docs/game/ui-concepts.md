@@ -15,6 +15,13 @@ Core principle: Everything is a **command** (all-caps 2–6 letter codes). Comma
 - Switch via a selection bar at top (SCRNS).
 - Each screen has independent tile arrangement.
 
+### Screen Variables (PRO)
+- Per-screen typed placeholders referenced in tile commands as `%Name%` (e.g. `BS %LOC%`).
+- Types: string, material, commodity exchange, location.
+- Location variables use the default location selector; value is a location natural id in commands.
+- Selectors live in a `ScreenVariableControls` bar (sibling of the tile grid). Location controls use `AddressSelector`.
+- API: variables arrive on each `Screen` in `UI_DATA` (`screens[].variables`). After a change, the server sends `UI_SCREENS_VARIABLES`. The client sets values via `UI_SCREENS_VARIABLE_SET_VALUE` (do not forge this from the extension — drive the AddressSelector instead).
+
 ### Tile Docking
 - **Docked tiles**: Embedded in screen grid. Resize by dragging dividers (horizontal/vertical splits).
 - **Floating buffers**: Detached windows that float above screen. Can be popped out/docked any time.

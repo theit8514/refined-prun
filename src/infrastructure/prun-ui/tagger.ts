@@ -3,6 +3,8 @@ export enum ElementTag {
   FXPO_CURRENT_PRICE_FIELD = 'rp-fxpo-current-price-field',
   FXPO_MAXIMUM_PRICE_FIELD = 'rp-fxpo-maximum-price-field',
   FXPO_MINIMUM_PRICE_FIELD = 'rp-fxpo-minimum-price-field',
+  FLT_DESTINATION_CELL = 'rp-flt-destination-cell',
+  FLT_LOCATION_CELL = 'rp-flt-location-cell',
   INV_LOCATION_CELL = 'rp-inv-location-cell',
   INV_NAME_CELL = 'rp-inv-name-cell',
   POPID_RESERVE_CELL = 'rp-popid-reserve-cell',
@@ -20,6 +22,14 @@ export function tagUI() {
     [L.InventoriesPanel.table.address(), ElementTag.INV_LOCATION_CELL],
     [L.InventoriesPanel.table.name(), ElementTag.INV_NAME_CELL],
   ]);
+
+  tagTileTable(
+    ['FLT', 'FLTS', 'FLTP'],
+    [
+      [L.FleetPanel.table.location(), ElementTag.FLT_LOCATION_CELL],
+      [L.FleetPanel.table.destination(), ElementTag.FLT_DESTINATION_CELL],
+    ],
+  );
 
   tagTileTable('POPID', [[L.Contribution.table.reserve(), ElementTag.POPID_RESERVE_CELL]]);
 }
@@ -46,7 +56,7 @@ function tagFormFields(parent: Element, tagMap: Map<string, ElementTag>) {
   });
 }
 
-function tagTileTable(command: string, mapItems: MapItems) {
+function tagTileTable(command: string | string[], mapItems: MapItems) {
   const tagMap = buildMap(mapItems);
   tiles.observe(command, tile => {
     subscribe($$(tile.anchor, 'table'), table => tagTable(table, tagMap));

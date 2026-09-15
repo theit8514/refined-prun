@@ -1,9 +1,6 @@
-import { changeInputValue, changeSelectIndex, clickElement, focusElement } from '@src/util';
-import {
-  getAddressMatchTerms,
-  getAddressSearchQuery,
-  getAddressSelectedMatchTerms,
-} from '@src/features/XIT/SRC/address-target';
+import { changeInputValue, changeSelectIndex, clickElement } from '@src/util';
+import { getAddressSelectedMatchTerms } from '@src/features/XIT/SRC/address-target';
+import { selectAddressInSelector } from '@src/infrastructure/prun-ui/address-selector';
 import { UI_TILES_CHANGE_COMMAND } from '@src/infrastructure/prun-api/client-messages';
 import { dispatchClientPrunMessage } from '@src/infrastructure/prun-api/prun-api-listener';
 import { sleep } from '@src/utils/sleep';
@@ -39,79 +36,6 @@ function findFormRow(tile: PrunTile, labelText: string | undefined) {
     return undefined;
   }
   return formRows(tile).find(x => rowLabelText(x) === labelText);
-}
-
-function findMatchingSuggestion(suggestionsList: Element, naturalId: string) {
-  const terms = getAddressMatchTerms(naturalId);
-  const suggestions = _$$(suggestionsList, C.AddressSelector.suggestion);
-  // Prefer earlier terms (station name before id) across the whole list.
-  for (const term of terms) {
-    const match = suggestions.find(x => (x.textContent ?? '').includes(term));
-    if (match) {
-      return match;
-    }
-  }
-  return undefined;
-}
-
-/** Wait until the portalled address search finishes and a matching row appears. */
-async function waitForAddressSearchResults(naturalId: string) {
-  const query = getAddressSearchQuery(naturalId);
-  const app = await $(document, C.App.container);
-
-  await $(app, C.AddressSelector.suggestionsContainerOpen);
-  const suggestionsList = await $(app, C.AddressSelector.suggestionsList);
-
-  const existing = findMatchingSuggestion(suggestionsList, naturalId);
-  if (existing) {
-    return existing;
-  }
-
-  return await new Promise<HTMLElement>((resolve, reject) => {
-    const timeout = setTimeout(() => {
-      observer.disconnect();
-      reject(new Error(`Address search timed out for ${query}`));
-    }, 60_000);
-
-    const observer = new MutationObserver(() => {
-      const match = findMatchingSuggestion(suggestionsList, naturalId);
-      if (match) {
-        clearTimeout(timeout);
-        observer.disconnect();
-        resolve(match);
-      }
-    });
-    observer.observe(suggestionsList, { childList: true, subtree: true });
-  });
-}
-
-async function selectAddress(row: HTMLElement, naturalId: string) {
-  const query = getAddressSearchQuery(naturalId);
-
-  let container: Element = row;
-  if (!container.classList.contains(C.AddressSelector.container)) {
-    container = (await $(row, C.AddressSelector.container)) as HTMLElement;
-  }
-
-  const input = (await $(container, C.AddressSelector.input)) as HTMLInputElement;
-  focusElement(input);
-  changeInputValue(input, query);
-
-  try {
-    const match = await waitForAddressSearchResults(naturalId);
-    const app = await $(document, C.App.container);
-    const suggestionsContainer = _$(app, C.AddressSelector.suggestionsContainer);
-    if (suggestionsContainer) {
-      suggestionsContainer.style.display = 'none';
-    }
-    await clickElement(match);
-    if (suggestionsContainer) {
-      suggestionsContainer.style.display = '';
-    }
-    return undefined;
-  } catch (e) {
-    return e instanceof Error ? e.message : `Address suggestion not found for ${query}`;
-  }
 }
 
 function findFuelUsageRow(tile: PrunTile) {
@@ -279,7 +203,7 @@ export async function applyBtfOrigin(tile: PrunTile, origin: string) {
   if (!originRow) {
     return 'Origin field not found';
   }
-  return selectAddress(originRow, origin);
+  return selectAddressInSelector(originRow, origin);
 }
 
 export async function applyBtfDestination(tile: PrunTile, destination: string) {
@@ -287,7 +211,7 @@ export async function applyBtfDestination(tile: PrunTile, destination: string) {
   if (!destinationRow) {
     return 'Destination field not found';
   }
-  return selectAddress(destinationRow, destination);
+  return selectAddressInSelector(destinationRow, destination);
 }
 
 /** True when the BTF origin AddressSelector already shows the given target. */

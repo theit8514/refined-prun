@@ -163,6 +163,8 @@ Every action that triggers server communication must require a user click. No au
 
 The extension does make some background server requests (e.g., `XIT BURN` opens invisible buffers). This is a known ToS violation with explicit developer permission — don't extend this pattern without discussion.
 
+`dispatchClientPrunMessage` only fakes an **inbound** server event to the client. It is not a way to send commands to the server. For UI that must change game state (e.g. screen location variables), automate the real control (AddressSelector) from a user click so the game client performs the outbound request.
+
 ---
 
 ## Workflow

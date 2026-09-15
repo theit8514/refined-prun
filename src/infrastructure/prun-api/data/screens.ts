@@ -40,6 +40,16 @@ onApiMessage({
     }
     store.addOne(screen);
   },
+  UI_SCREENS_VARIABLES(data: { screenId: string; variables: PrunApi.ScreenVariable[] }) {
+    const screen = state.getById(data.screenId);
+    if (screen === undefined) {
+      return;
+    }
+    store.setOne({
+      ...screen,
+      variables: data.variables,
+    });
+  },
 });
 
 export const screenHash = ref(undefined as string | undefined);
@@ -65,8 +75,13 @@ const current = computed(
   () => sorted.value?.find(x => x.id === screenHash.value) ?? sorted.value?.[0],
 );
 
+const currentLocationVariables = computed(
+  () => current.value?.variables?.filter(x => x.type === 'LOCATION') ?? [],
+);
+
 export const screensStore = {
   ...state,
   sorted,
   current,
+  currentLocationVariables,
 };

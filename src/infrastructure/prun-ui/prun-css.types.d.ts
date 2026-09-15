@@ -1403,6 +1403,11 @@ declare global {
       selector: string;
       undo: string;
     };
+    ScreenVariableControls: {
+      bar: string;
+      location: string;
+      variable: string;
+    };
     ScrollView: {
       thumbHorizontal: string;
       thumbVertical: string;

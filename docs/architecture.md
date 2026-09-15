@@ -93,6 +93,8 @@ import { onApiMessage } from '@src/infrastructure/prun-api/data/api-messages';
 onApiMessage({ SOME_MESSAGE_TYPE(data) { /* ... */ } });
 ```
 
+**`dispatchClientPrunMessage`** injects a message into the game client as if the **server** sent it. It does **not** send traffic to the server. Do not use it to "set" screen variables or otherwise fake client→server actions. To change a Location screen variable, drive the `ScreenVariableControls` `AddressSelector` (see `prun-ui/address-selector.ts`), same pattern as XIT SRC BTF configuration.
+
 ### `prun-ui/` — DOM Layer
 
 - **`C`** (`prun-css.ts`) — Object of runtime CSS class names parsed from PrUn's hashed stylesheets. E.g. `C.TileFrame.frame`. Available globally (auto-import).

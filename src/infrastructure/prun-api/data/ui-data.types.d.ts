@@ -14,6 +14,7 @@ declare namespace PrunApi {
     name: string;
     hidden: boolean;
     state: UIState[];
+    variables?: ScreenVariable[];
   }
 
   interface UIState {
