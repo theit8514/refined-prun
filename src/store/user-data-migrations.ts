@@ -17,6 +17,54 @@ function isCheckpoint(entry: MigrationEntry): entry is Checkpoint {
 // The date is for reference only, and it does not affect migration order.
 const migrations: MigrationEntry[] = [
   [
+    '15.09.2026 Add govburn data',
+    userData => {
+      userData.govburn ??= { planets: {}, config: { planets: {} } };
+      userData.govburn.config.resupplyDays ??= 30;
+      userData.govburn.config.red ??= 3;
+      userData.govburn.config.yellow ??= 7;
+      userData.govburn.config.slots ??= {};
+    },
+  ],
+  [
+    '14.09.2026 Add noBuy setting',
+    userData => {
+      userData.settings.noBuy ??= [];
+    },
+  ],
+  [
+    '12.09.2026 Add tab folders',
+    userData => {
+      userData.tabs.folders ??= [];
+    },
+  ],
+  [
+    '11.09.2026 Add XIT PLNT settings',
+    userData => {
+      userData.settings.burn.planetPickup ??= {};
+      userData.settings.repair.planetOverrides ??= {};
+      userData.settings.burn.planetResupply ??= {};
+    },
+  ],
+  [
+    '11.09.2026 Add cxmOrder setting',
+    userData => {
+      userData.settings.cxmOrder ??= ['AI1', 'CI1', 'CI2', 'IC1', 'NC1', 'NC2'];
+    },
+  ],
+  [
+    '10.09.2026 Add contextMenuExchange setting',
+    userData => {
+      userData.settings.contextMenuExchange ??= 'AI1';
+    },
+  ],
+  [
+    '25.08.2026 Add flow price overrides',
+    userData => {
+      userData.settings.flow = { overrides: {} };
+    },
+  ],
+  [
     '19.06.2026 Remove adm-hide-inactive-buttons',
     userData => {
       removeFeature(userData, 'adm-hide-inactive-buttons');

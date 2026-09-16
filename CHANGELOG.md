@@ -2,24 +2,74 @@
 
 ## Unreleased
 
+## 26.9.15
+
+### New commands
+
+- `XIT AGT`: Lists action packages synced via the private refined-agent channel
+- `XIT BS`: Lists all player bases with links to key base commands
+- `XIT BURNACT`: Executes a resupply action package for a planet from the burn screen
+- `XIT DATA`: Explores in-memory Refined PrUn game and tile data
+- `XIT DSP`: Plans shipments of resupply and repair materials to your bases
+- `XIT FLT`: Enhanced fleet table with detailed status, cargo, fuel, and quick actions
+- `XIT FLOW`: Shows daily production, consumption, and value of each material across bases
+- `XIT GOVBURN`: Tracks planetary infrastructure upkeep
+- `XIT GOVBURNACT`: Executes a planetary upkeep resupply action package
+- `XIT GOVBURNDATA`: Collects planetary infrastructure upkeep data via POPI/POPID buffers
+- `XIT INV`: Lists all inventories with cargo bars and filters by type
+- `XIT PLS`: Per-planet settings for bases you own
+- `XIT REPAIRACT`: Executes a repair action package for a planet using XIT REP settings
+- `XIT REFUELACT`: Executes a refuel action package for all ships docked at exchanges
+- `XIT STO`: Per-base storage analysis
+- `XIT WHATSNEW`: Refined PrUn release notes
+
 ### Added
 
+- `CONT`: Added a fulfill-next button with pending condition count (`cont-fulfill-next`)
+- `CONTD`: Added a count input to add multiple commodity/shipment rows at once (`contd-bulk-add-commodity`)
+- `CONTD`: Added "all" buttons next to the first commodity fields to copy values to every other commodity (`contd-bulk-add-commodity`)
+- `CONTD`: Added importing and exporting of contract templates (`contd-import-export`)
+- `CXM`: Added drag-and-drop to reorder exchanges (`cxm-reorder`)
 - `INV`: Added in-flight ship destinations to the Location column (`inv-ship-destination-location`)
 - `INV`: Added ship names to the Name column (`inv-ship-names`)
+- `INV`: Added an "Analysis" button that shows a `XIT STO` summary pane (`inv-analysis-button`)
 - `XIT ACT`: Added descriptions to the action and material group type fields
 - `XIT ACT`: Added "Paste" material group
 - `XIT ACT`: Added "CONT Ship" and "CONT Trade" actions
+- `XIT ACT`: Added a "GovBurn Data" action to load planetary infrastructure and upkeep data through POPI, POPID, and COGC
+- `XIT ACT`: Added a "Configure on Execution" option to "Exchange" in "CX Buy" configuration
+- `XIT ACT`: Added a "Configure on Execution" toggle to "Days" in "Resupply" configuration
+- `XIT ACT`: Added an All/Workforce/Production material filter to the "Resupply" runtime configuration
+- `XIT ACT`: Added repair threshold and time offset settings to the "Repair" configuration
+- `XIT ACT`: Added "CX Buy Only" as an MTRA destination in runtime configuration
+- `XIT ACT`: Added "All Exchanges" as a Refuel origin
+- `XIT ACT`: Added total material weight and volume to previews and execution logs
+- `XIT ACT`: Added resupply weight/volume totals and buttons to fit supplies to a ship size or the selected ship's free cargo capacity
+- `XIT BURN`: Added a right-click context menu for planets
+- `XIT CONTC`: Added fulfill buttons to fulfillable conditions
+- `XIT FINCH`: Added an "Equity Growth" chart
+- `XIT SET`: Added global `XIT ACT` configuration in `XIT SET ACT`
+- `XIT SET`: Added financial data merging tool in `XIT SET FIN`
 - Added a notification count badge to the browser tab favicon (`favicon-notification-badge`)
+- Added a right-click market context menu for materials (`market-context-menu`)
+- Added tab folders (`screen-tab-bar-folders`)
 
 ### Changed
 
 - `COM`: The text in backticks now renders as command links (`chat-command-links`)
+- `CXPO`: The tile command input now supports shortcuts like "a dw" or "rat mor" (`cxpo-command-shortcut`)
 - `FXPO`: The "Maximum Lot Size" field now sets a more precise price (`fxpo-maximum-lot-size`)
+- `INV`: Shortcuts (like "INV Deimos") now open the base inventory if more than one inventory is available at the address (`correct-commands`)
 - `SFC`: The buffer now closes without delay on flight start (`sfc-auto-close`)
 - `XIT ACT`: The package name title now validates the new name before saving
+- `XIT ACT`: With unfilled orders disabled, CX stock shortages now warn and buy the available amount instead of stopping the package
+- `XIT ACT`: Refuel now accounts for available CX fuel stock and warns about shortages before refueling
+- `XIT BURN`: Inventory and resupply calculations now include cargo on ships flying to the base's planet
 - `XIT CONTC`: The conditions with no deadline are now grouped and sorted
+- `XIT CONTS`: Fulfillable conditions can now be clicked to fulfill
 - `XIT FXTS`: Day totals now include both sides of trades
 - `XIT PRUNSTAT`: Switched to raylu's fork
+- Tile data export now supports many more commands
 
 ### Fixed
 
@@ -27,10 +77,14 @@
 - `POPID`: Fixed ALL contribution selection exceeding full reserves (`contribution-bulk-controls`)
 - `PROD`: Fixed order completion time not displaying for `PROD {planet id}` (`prod-order-eta`)
 - `XIT ACT`: Fixed the "Unknown action feedback overlay" error when CX Buy places an order outside the price band
+- `XIT ACT`: Fixed Resupply material group not filling full material demand
+- `XIT ACT`: Fixed repeated identical CX shortage warnings on order book updates
 - `XIT BURN`: Fixed the TSV export reporting double the inventory in the "Inv" column
 - `XIT BURN`: Fixed workforce allocation accumulation across tiers
 - `XIT BURN`: Fixed color filters not matching fractional-day colors
 - `XIT BURN`: Fixed inventory values rounding up
+- Tooltips no longer get clipped by tile/window boundaries (`unclipped-tooltips`)
+- Station commands now correctly auto-capitalize, for example `inv mor` => `INV MOR` (`correct-commands`)
 
 ## 26.6.22.2033
 

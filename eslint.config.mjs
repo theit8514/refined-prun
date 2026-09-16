@@ -124,6 +124,26 @@ export default ts.config(
   },
 
   {
-    ignores: ['dist/**/*', '.tmp/**/*', 'eslint.config.mjs', 'src/types/unimport.d.ts'],
+    files: ['scripts/**/*.mjs'],
+    languageOptions: {
+      parserOptions: {
+        project: null,
+      },
+      globals: {
+        console: 'readonly',
+        process: 'readonly',
+      },
+    },
+  },
+
+  {
+    ignores: [
+      'dist/**/*',
+      '.tmp/**/*',
+      'eslint.config.mjs',
+      'src/types/unimport.d.ts',
+      '.local/**/*',
+      '.claude/worktrees/**/*',
+    ],
   },
 );

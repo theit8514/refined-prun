@@ -2,6 +2,7 @@ import { deepFreeze } from '@src/utils/deep-freeze';
 
 export const initialUserData = deepFreeze({
   firstLoad: Date.now(),
+  lastSeenChangelogVersion: undefined as string | undefined,
   tileState: {} as Record<string, UserData.TileState | undefined>,
   settings: {
     mode: undefined as 'BASIC' | 'FULL' | undefined,
@@ -26,12 +27,19 @@ export const initialUserData = deepFreeze({
       red: 3,
       yellow: 7,
       resupply: 16,
+      planetResupply: {} as Record<string, number>,
+      // Planet natural id -> ship-size label from core/ship-sizes.
+      planetPickup: {} as Record<string, string>,
+    },
+    flow: {
+      overrides: {} as Record<string, UserData.PriceOverride>,
     },
     repair: {
       threshold: 60,
       offset: 10,
-      overrides: [] as UserData.RepairOverride[],
+      planetOverrides: {} as Record<string, { threshold?: number; offset?: number }>,
     },
+    noBuy: [] as string[],
     sidebar: [
       ['BS', 'BS'],
       ['CONT', 'XIT CONTS'],
@@ -53,6 +61,8 @@ export const initialUserData = deepFreeze({
     ] as [string, string][],
     buffers: [] as [string, number, number][],
     audioVolume: 0.4,
+    contextMenuExchange: 'AI1' as UserData.Exchange,
+    cxmOrder: ['AI1', 'CI1', 'CI2', 'IC1', 'NC1', 'NC2'] as UserData.Exchange[],
   },
   sorting: {} as Record<string, UserData.StoreSortingData>,
   balanceHistory: {
@@ -68,8 +78,19 @@ export const initialUserData = deepFreeze({
     order: [] as string[],
     hidden: [] as string[],
     locked: [] as string[],
+    folders: [] as UserData.TabFolder[],
   },
   commandLists: [] as UserData.CommandList[],
+  govburn: {
+    planets: {} as Record<string, UserData.GovBurnPlanet>,
+    config: {
+      planets: {} as Record<string, UserData.GovBurnPlanetConfig>,
+      slots: {} as Record<string, UserData.GovBurnPlanetSlots>,
+      resupplyDays: 30,
+      red: 3,
+      yellow: 7,
+    },
+  },
 
   // Used in user-data-migrations.ts
   migrations: undefined,

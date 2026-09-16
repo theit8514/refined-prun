@@ -109,6 +109,11 @@ interface RcSliderProps {
   onAfterChange?: (value: number) => void;
 }
 
+interface ReactFiber {
+  return?: ReactFiber;
+  memoizedProps?: RcSliderProps;
+}
+
 function getRcSliderProps(slider: HTMLElement): RcSliderProps | undefined {
   const key = Object.keys(slider).find(
     x => x.startsWith('__reactFiber') || x.startsWith('__reactInternalInstance'),
@@ -117,12 +122,10 @@ function getRcSliderProps(slider: HTMLElement): RcSliderProps | undefined {
     return undefined;
   }
 
-  let fiber = (
-    slider as unknown as Record<string, { return?: unknown; memoizedProps?: RcSliderProps }>
-  )[key];
-  for (let i = 0; i < 20 && fiber; i++, fiber = fiber.return as typeof fiber) {
+  let fiber = (slider as unknown as Record<string, ReactFiber | undefined>)[key];
+  for (let i = 0; i < 20 && fiber !== undefined; i++, fiber = fiber.return) {
     const props = fiber.memoizedProps;
-    if (props && typeof props.onChange === 'function') {
+    if (props !== undefined && typeof props.onChange === 'function') {
       return props;
     }
   }
@@ -172,7 +175,7 @@ function setRcSliderPercent(slider: HTMLElement, percent: 0 | 50 | 100) {
 
   const value = snapSliderValue(raw, min, max, step);
   props.onChange(value);
-  // onChange updates the handle; complete/after triggers the MissionPlan server call.
+  // The onChange callback updates the handle; complete/after triggers the MissionPlan server call.
   props.onChangeComplete?.(value);
   props.onAfterChange?.(value);
   return undefined;
@@ -271,8 +274,8 @@ export async function ensureBtfRouteMatches(
   origin: string,
   destination: string,
 ) {
-  const tile = tiles.find(`BTF ${blueprintNaturalId}`, true)[0];
-  if (!tile) {
+  const tile = tiles.find(`BTF ${blueprintNaturalId}`, true).at(0);
+  if (tile === undefined) {
     return { cleared: false };
   }
 

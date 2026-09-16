@@ -3,3 +3,5 @@ export interface Config {
   destination?: string;
   skip?: boolean;
 }
+
+export const CX_BUY_ONLY_DEST = 'CX Buy Only';

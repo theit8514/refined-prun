@@ -2,9 +2,9 @@ import {
   ActionStep,
   ActionStepExecuteContext,
   ActionStepGenerateContext,
-  MaterialBill,
   MaterialGroupGenerateContext,
 } from '@src/features/XIT/ACT/shared-types';
+import { MaterialBill } from '@src/features/XIT/ACT/material-bill';
 
 interface MaterialGroupInfo<TConfig> {
   type: UserData.MaterialGroupType;
@@ -62,6 +62,7 @@ interface ActionStepInfo<T> {
   type: string;
   preProcessData?: (data: T) => T;
   description: (data: T) => string;
+  totalMaterials?: (data: T) => Record<string, number>;
   execute: (ctx: ActionStepExecuteContext<T>) => Promise<void>;
 }
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { MaterialBurn } from '@src/core/burn';
+import { computeNeed, getResupplyDays, MaterialBurn } from '@src/core/burn';
 import MaterialIcon from '@src/components/MaterialIcon.vue';
 import DaysCell from '@src/features/XIT/BURN/DaysCell.vue';
 import { fixed0, fixed1, fixed2, trunc0, trunc01, trunc02 } from '@src/utils/format';
@@ -7,17 +7,17 @@ import { useTileState } from '@src/features/XIT/BURN/tile-state';
 import { getBurnThresholds } from '@src/features/XIT/BURN/utils';
 import PrunButton from '@src/components/PrunButton.vue';
 import { showBuffer } from '@src/infrastructure/prun-ui/buffers';
-import { userData } from '@src/store/user-data';
 
-const { alwaysVisible, burn, material } = defineProps<{
+const { alwaysVisible, burn, material, naturalId } = defineProps<{
   alwaysVisible?: boolean;
   burn: MaterialBurn;
   material: PrunApi.Material;
+  naturalId?: string;
 }>();
 
 const production = computed(() => burn.dailyAmount);
 const invAmount = computed(() => {
-  const amount = burn.inventory + burn.remainingAllocation;
+  const amount = burn.inventory + burn.inboundInventory + burn.remainingAllocation;
   // Truncate, don't round, so the shown amount never exceeds what you hold.
   if (amount >= 100) {
     return trunc0(amount);
@@ -84,16 +84,7 @@ const outClass = computed(() => ({
   [C.ColoredValue.positive]: outAmount.value > 0,
 }));
 
-const needAmt = computed(() => {
-  const resupply = userData.settings.burn.resupply;
-  if (days.value > resupply || production.value >= 0) {
-    return 0;
-  }
-  let need = Math.ceil((days.value - resupply) * production.value);
-  // Math.abs is needed to prevent a "-0" value that can happen
-  // in situations like: 0 * -0.25 => -0.
-  return Math.abs(need);
-});
+const needAmt = computed(() => computeNeed(burn, getResupplyDays(naturalId)));
 </script>
 
 <template>
