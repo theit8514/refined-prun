@@ -11,6 +11,7 @@ import {
 } from '@src/infrastructure/prun-api/data/addresses';
 import { comparePlanets } from '@src/util';
 import { useTileState } from '@src/store/user-data-tiles';
+import { userData } from '@src/store/user-data';
 import { getPlanetBurn, getResupplyDays } from '@src/core/burn';
 import { getRepairOffset, getRepairThreshold } from '@src/core/buildings';
 import { countDays } from '@src/features/XIT/BURN/utils';
@@ -72,6 +73,19 @@ function createBaseConfig(naturalId: string): DispatchBaseConfig {
 function burnDaysRemaining(siteId: string) {
   const burn = getPlanetBurn(siteId);
   return burn ? countDays(burn.burn) : Infinity;
+}
+
+function getMaterialExclusions(naturalId: string) {
+  return userData.settings.dispatch.materialExclusions[naturalId] ?? [];
+}
+
+function setMaterialExclusions(naturalId: string, exclusions: string[]) {
+  const map = userData.settings.dispatch.materialExclusions;
+  if (exclusions.length === 0) {
+    delete map[naturalId];
+  } else {
+    map[naturalId] = exclusions;
+  }
 }
 
 const bases = computed<BaseEntry[] | undefined>(() => {
@@ -190,7 +204,12 @@ const billByBase = computed(() => {
     if (!config.resupply && !config.repair) {
       continue;
     }
-    const bill = combinedBaseBill(base.naturalId, config, base.site);
+    const bill = combinedBaseBill(
+      base.naturalId,
+      config,
+      base.site,
+      getMaterialExclusions(base.naturalId),
+    );
     if (bill) {
       map.set(base.naturalId, bill);
     }
@@ -375,6 +394,7 @@ function fitBase(naturalId: string) {
     naturalId: x.base.naturalId,
     config: x.config,
     site: x.base.site,
+    exclusions: getMaterialExclusions(x.base.naturalId),
   }));
 
   const days = fitDaysForShip(config.ship, sharingBases, dispatchShip.cargoStore);
@@ -455,6 +475,7 @@ function reset() {
               <th :class="[$style.narrowCol, $style.centered]" colspan="2">Rep</th>
               <th :class="[$style.narrowCol, $style.centered]">Load</th>
               <th :class="[$style.narrowCol, $style.centered]">Materials</th>
+              <th :class="[$style.narrowCol, $style.centered]">Exclude</th>
               <th :class="[$style.narrowCol, $style.centered]">Fit</th>
               <th :class="[$style.narrowCol, $style.centered]">Days</th>
               <th :class="[$style.narrowCol, $style.centered]">Rep ≥</th>
@@ -473,8 +494,10 @@ function reset() {
               :planet-name="row.base.planetName"
               :config="row.config"
               :bill="billByBase.get(row.id)"
+              :exclusions="getMaterialExclusions(row.base.naturalId)"
               :overloaded="overloadedShips.has(row.config.ship ?? '')"
-              @fit="fitBase(row.base.naturalId)" />
+              @fit="fitBase(row.base.naturalId)"
+              @update:exclusions="value => setMaterialExclusions(row.base.naturalId, value)" />
           </tbody>
         </table>
       </div>

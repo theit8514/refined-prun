@@ -4,6 +4,7 @@ import PrunButton from '@src/components/PrunButton.vue';
 import RadioItem from '@src/components/forms/RadioItem.vue';
 import NumberInput from '@src/components/forms/NumberInput.vue';
 import SelectInput from '@src/components/forms/SelectInput.vue';
+import TextInput from '@src/components/forms/TextInput.vue';
 import GripCell from '@src/components/grip/GripCell.vue';
 import { getPlanetBurn } from '@src/core/burn';
 import { burnDaysClass, countDays, formatBurnDays } from '@src/features/XIT/BURN/utils';
@@ -16,21 +17,53 @@ import { fixed0 } from '@src/utils/format';
 import type { MaterialFilter } from '@src/features/XIT/ACT/material-groups/resupply/config';
 import { DispatchBaseConfig } from '@src/features/XIT/DSP/utils';
 import { billTotals, MaterialBill } from '@src/features/XIT/ACT/material-bill';
+import { materialsStore } from '@src/infrastructure/prun-api/data/materials';
 
-const { siteId, naturalId, planetName, config, overloaded, bill } = defineProps<{
+const { siteId, naturalId, planetName, config, overloaded, bill, exclusions } = defineProps<{
   siteId: string;
   naturalId: string;
   planetName: string;
   config: DispatchBaseConfig;
   overloaded: boolean;
   bill?: MaterialBill;
+  exclusions: string[];
 }>();
 
 const emit = defineEmits<{
   fit: [];
+  'update:exclusions': [value: string[]];
 }>();
 
 const materialFilterOptions: MaterialFilter[] = ['All', 'Workforce', 'Production'];
+const exclusionsInput = ref(exclusions.join(', '));
+
+watch(
+  () => exclusions,
+  value => {
+    if (value.join(', ') !== exclusionsInput.value) {
+      exclusionsInput.value = value.join(', ');
+    }
+  },
+  { deep: true },
+);
+
+function saveExclusions() {
+  const parsed = exclusionsInput.value
+    .split(',')
+    .map(x => materialsStore.getByTicker(x.trim())?.ticker)
+    .filter(x => x !== undefined);
+  const normalized = [...new Set(parsed)];
+  exclusionsInput.value = normalized.join(', ');
+  emit('update:exclusions', normalized);
+}
+
+function onExclusionsKeydown(event: KeyboardEvent) {
+  if (event.key !== 'Enter') {
+    return;
+  }
+  event.preventDefault();
+  saveExclusions();
+}
 
 const canFit = computed(() => !!config.ship);
 
@@ -178,6 +211,14 @@ function clearShip() {
     <td :class="$style.selectCell">
       <div :class="[C.forms.input, $style.selectWrap]">
         <SelectInput v-model="config.materialFilter" :options="materialFilterOptions" />
+      </div>
+    </td>
+    <td :class="$style.exclusionsCell">
+      <div :class="[C.forms.input, $style.exclusionsWrap]">
+        <TextInput
+          v-model="exclusionsInput"
+          @change="saveExclusions"
+          @keydown="onExclusionsKeydown" />
       </div>
     </td>
     <td :class="$style.fitCell">
@@ -378,6 +419,29 @@ function clearShip() {
 
 .selectWrap :global(select) {
   width: 100%;
+}
+
+.exclusionsCell {
+  width: 0;
+  white-space: nowrap;
+  padding: 0 2px;
+  line-height: 22px;
+  vertical-align: middle;
+}
+
+.exclusionsWrap {
+  width: 88px;
+}
+
+.exclusionsWrap :global(div) {
+  width: 88px;
+  margin: 0;
+}
+
+.exclusionsWrap :global(input) {
+  box-sizing: border-box;
+  width: 100%;
+  height: 17px;
 }
 
 .advToggleCell {

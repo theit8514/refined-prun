@@ -85,6 +85,7 @@ export function combinedBaseBill(
   naturalId: string,
   config: DispatchBaseConfig,
   site: PrunApi.Site,
+  exclusions?: string[],
 ) {
   if (!config.resupply && !config.repair) {
     return undefined;
@@ -93,7 +94,7 @@ export function combinedBaseBill(
   let resupply: MaterialBill | undefined;
   if (config.resupply) {
     resupply = computeResupplyBill(
-      { type: 'Resupply', useBaseInv: true },
+      { type: 'Resupply', useBaseInv: true, exclusions },
       naturalId,
       config.days,
       config.materialFilter,
@@ -139,7 +140,12 @@ export function regroupByShip(order: string[], shipOf: Map<string, string>) {
 
 export function fitDaysForShip(
   shipId: string,
-  bases: { naturalId: string; config: DispatchBaseConfig; site: PrunApi.Site }[],
+  bases: {
+    naturalId: string;
+    config: DispatchBaseConfig;
+    site: PrunApi.Site;
+    exclusions?: string[];
+  }[],
   cargoStore: PrunApi.Store,
 ) {
   const sharing = bases.filter(x => x.config.ship === shipId);
@@ -169,7 +175,7 @@ export function fitDaysForShip(
     }
     if (
       !computeResupplyBill(
-        { type: 'Resupply', useBaseInv: true },
+        { type: 'Resupply', useBaseInv: true, exclusions: base.exclusions },
         base.naturalId,
         1,
         base.config.materialFilter,
@@ -187,7 +193,7 @@ export function fitDaysForShip(
         continue;
       }
       const entries = computeResupplyBill(
-        { type: 'Resupply', useBaseInv: true },
+        { type: 'Resupply', useBaseInv: true, exclusions: base.exclusions },
         base.naturalId,
         days,
         base.config.materialFilter,

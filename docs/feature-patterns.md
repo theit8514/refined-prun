@@ -84,6 +84,12 @@ The file is auto-imported via `import.meta.glob` in `src/features/index.ts` — 
 
 The command should be short. Refer to `docs/game/commands.csv` for an example of game commands. Alias is usually added for backwards compatibility or if the community REALLY wants it.
 
+### XIT Tile State
+
+`useTileState` only persists state for tiles with nonnumeric IDs, such as docked tiles. Floating
+buffers have numeric IDs, so their tile state is temporary. Use global `userData` settings for
+configuration that must apply to all instances of an XIT command.
+
 ---
 
 ## Tile UI Constraints
