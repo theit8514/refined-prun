@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+## 26.9.16
+
+### Added
+
+- `XIT AGT`: Added a short guide on usage
+
+### Fixed
+
+- `INV`: Fixed a "Component failed to render" error on ship flight start (`inv-ship-destination-location`)
+- `XIT ACT`: Fixed an error when some ships are not named
+
 ## 26.9.15
 
 ### New commands
