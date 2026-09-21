@@ -7,6 +7,7 @@ import SelectInput from '@src/components/forms/SelectInput.vue';
 import TextInput from '@src/components/forms/TextInput.vue';
 import GripCell from '@src/components/grip/GripCell.vue';
 import { getPlanetBurn } from '@src/core/burn';
+import { getBaseStorageAnalysis } from '@src/core/storage-analysis';
 import { burnDaysClass, countDays, formatBurnDays } from '@src/features/XIT/BURN/utils';
 import { getRepairOffset, getRepairThreshold } from '@src/core/buildings';
 import { getPlanetRepairAge } from '@src/core/repair';
@@ -97,6 +98,34 @@ const repairDaysText = computed(() => {
     return '-';
   }
   return String(Math.floor(age));
+});
+
+// Days until storage fills at the net production rate; only finite when filling.
+const storageAnalysis = computed(() => getBaseStorageAnalysis(siteId));
+const daysUntilFull = computed(() => {
+  const days = storageAnalysis.value?.daysUntilFull;
+  if (days === undefined || !isFinite(days)) {
+    return undefined;
+  }
+  return days;
+});
+const daysUntilFullText = computed(() =>
+  daysUntilFull.value === undefined ? '-' : formatBurnDays(daysUntilFull.value),
+);
+const daysUntilFullClass = computed(() =>
+  daysUntilFull.value === undefined ? {} : burnDaysClass(daysUntilFull.value),
+);
+const daysUntilFullTooltip = computed(() => {
+  const analysis = storageAnalysis.value;
+  if (analysis === undefined) {
+    return 'Waiting for storage data';
+  }
+  if (daysUntilFull.value === undefined) {
+    return 'Storage draining - not filling';
+  }
+  return analysis.bindingLimit === 't'
+    ? 'Days until storage is full at the current net production rate (weight binding)'
+    : 'Days until storage is full at the current net production rate (volume binding)';
 });
 
 const loadText = computed(() => {
@@ -198,6 +227,14 @@ function clearShip() {
         :class="[$style.statusContent, repairBgClass]"
         @click="showBuffer(`XIT REP ${naturalId}`)">
         <span :class="$style.statusNum">{{ repairDaysText }}</span>
+      </div>
+    </td>
+    <td :class="$style.statusCell">
+      <div
+        :class="[$style.statusContent, daysUntilFullClass]"
+        :data-tooltip="daysUntilFullTooltip"
+        @click="showBuffer(`XIT STO ${naturalId}`)">
+        <span :class="$style.statusNum">{{ daysUntilFullText }}</span>
       </div>
     </td>
     <td

@@ -473,6 +473,7 @@ function reset() {
               <th :class="[$style.narrowCol, $style.centered]">Planet</th>
               <th :class="[$style.narrowCol, $style.centered]" colspan="2">Burn</th>
               <th :class="[$style.narrowCol, $style.centered]" colspan="2">Rep</th>
+              <th :class="[$style.narrowCol, $style.centered]">Full</th>
               <th :class="[$style.narrowCol, $style.centered]">Load</th>
               <th :class="[$style.narrowCol, $style.centered]">Materials</th>
               <th :class="[$style.narrowCol, $style.centered]">Exclude</th>
