@@ -1,11 +1,4 @@
 import { fixed01 } from '@src/utils/format';
-import { convertToPlanetNaturalId } from '@src/core/planet-natural-id';
-import { sitesStore } from '@src/infrastructure/prun-api/data/sites';
-
-export function getSiteFromParameters(parameters: string[]) {
-  const naturalId = convertToPlanetNaturalId(parameters.join(' '), parameters);
-  return sitesStore.getByPlanetNaturalId(naturalId);
-}
 
 export function formatDays(days: number) {
   if (!isFinite(days) || days >= 1000) {

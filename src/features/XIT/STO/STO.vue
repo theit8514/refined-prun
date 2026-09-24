@@ -5,10 +5,11 @@ import BaseSection from '@src/features/XIT/STO/BaseSection.vue';
 import LoadingSpinner from '@src/components/LoadingSpinner.vue';
 import InlineFlex from '@src/components/InlineFlex.vue';
 import Tooltip from '@src/components/Tooltip.vue';
-import { getSiteFromParameters } from '@src/features/XIT/STO/utils';
 import { useXitParameters } from '@src/hooks/use-xit-parameters';
+import { convertToPlanetNaturalId } from '@src/core/planet-natural-id';
 import { sitesStore } from '@src/infrastructure/prun-api/data/sites';
 import { comparePlanets } from '@src/util';
+import { findWithQuery } from '@src/utils/find-with-query';
 
 // Fake sample used by the invisible reference row that sets column widths.
 const fakeAnalysis: BaseStorageAnalysis = {
@@ -40,16 +41,37 @@ const fakeAnalysis: BaseStorageAnalysis = {
 const parameters = useXitParameters();
 const planetParameter = parameters.join(' ');
 
-const analyses = computed(() => {
-  if (!sitesStore.all.value) {
+const sites = computed(() => {
+  const allSites = sitesStore.all.value;
+  if (!allSites) {
     return undefined;
   }
-  let sites = sitesStore.all.value;
-  if (parameters[0]) {
-    const match = getSiteFromParameters(parameters);
-    sites = match ? [match] : [];
+  if (parameters.length === 0) {
+    return allSites;
   }
-  const result = sites.map(getBaseStorageAnalysis).filter(x => !!x);
+
+  const result = findWithQuery(parameters, findSites);
+  let matches = result.includeAll ? allSites : result.include;
+  if (result.excludeAll) {
+    matches = [];
+  }
+  return matches.filter(x => !result.exclude.has(x));
+});
+
+function findSites(term: string, parts: string[]) {
+  if (term === 'all') {
+    return sitesStore.all.value;
+  }
+
+  const naturalId = convertToPlanetNaturalId(term, parts);
+  return sitesStore.getByPlanetNaturalId(naturalId);
+}
+
+const analyses = computed(() => {
+  if (!sites.value) {
+    return undefined;
+  }
+  const result = sites.value.map(getBaseStorageAnalysis).filter(x => !!x);
   result.sort((a, b) => {
     const aInf = !isFinite(a.daysUntilFull);
     const bInf = !isFinite(b.daysUntilFull);

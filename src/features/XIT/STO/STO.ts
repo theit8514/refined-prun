@@ -1,12 +1,12 @@
 import STO from '@src/features/XIT/STO/STO.vue';
-import { getSiteFromParameters } from '@src/features/XIT/STO/utils';
+import { sitesStore } from '@src/infrastructure/prun-api/data/sites';
 import { getEntityNameFromAddress } from '@src/infrastructure/prun-api/data/addresses';
 
 xit.add({
   command: ['STO', 'STORAGE'],
   name: parameters => {
-    if (parameters[0]) {
-      const site = getSiteFromParameters(parameters);
+    if (parameters[0] && !parameters[1]) {
+      const site = sitesStore.getByPlanetNaturalIdOrName(parameters[0]);
       if (site) {
         return `Storage - ${getEntityNameFromAddress(site.address)}`;
       }
@@ -14,7 +14,7 @@ xit.add({
     return 'Storage Analysis';
   },
   description: 'Per-base storage analysis.',
-  optionalParameters: 'PLANET',
+  optionalParameters: 'Planet Identifier(s), NOT',
   component: () => STO,
   bufferSize: [900, 500],
 });
