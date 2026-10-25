@@ -33,6 +33,7 @@ export interface ActionStepGenerateContext<TConfig>
   assert: AssertFn;
   getMaterialGroup: (name: string | undefined) => Promise<MaterialBill | undefined>;
   getMaterialGroupPlanet: (name: string | undefined) => string | undefined;
+  getMaterialGroupShip: (name: string | undefined) => string | undefined;
   emitStep: (step: ActionStep) => void;
   state: {
     WAR: {

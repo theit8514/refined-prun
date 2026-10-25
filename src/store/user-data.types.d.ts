@@ -56,7 +56,7 @@ declare namespace UserData {
     };
   }
 
-  type MaterialGroupType = 'Manual' | 'Resupply' | 'Repair' | 'Paste';
+  type MaterialGroupType = 'Manual' | 'Resupply' | 'Repair' | 'Paste' | 'Ship Repair';
 
   interface MaterialGroupData {
     type: MaterialGroupType;
@@ -64,6 +64,10 @@ declare namespace UserData {
     days?: number | string;
     advanceDays?: number | string;
     planet?: string;
+    // Ship Repair: serialized base/warehouse (same format as MTRA origin/dest).
+    location?: string;
+    // Ship Repair: ship registration.
+    ship?: string;
     useBaseInv?: boolean;
     materials?: Record<string, number>;
     exclusions?: string[];
@@ -71,7 +75,14 @@ declare namespace UserData {
     materialFilter?: 'All' | 'Workforce' | 'Production';
   }
 
-  type ActionType = 'CX Buy' | 'MTRA' | 'Refuel' | 'CONT Ship' | 'CONT Trade' | 'GovBurn Data';
+  type ActionType =
+    | 'CX Buy'
+    | 'MTRA'
+    | 'Refuel'
+    | 'CONT Ship'
+    | 'CONT Trade'
+    | 'GovBurn Data'
+    | 'Ship Repair';
 
   interface ActionData {
     type: ActionType;

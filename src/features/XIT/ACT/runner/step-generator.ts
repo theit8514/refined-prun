@@ -66,6 +66,7 @@ export class StepGenerator {
           emitStep: step => steps.push(step),
           getMaterialGroup: async name => await this.getMaterialGroup(pkg, config, name),
           getMaterialGroupPlanet: name => this.getMaterialGroupPlanet(pkg, config, name),
+          getMaterialGroupShip: name => this.getMaterialGroupShip(pkg, config, name),
           state,
           mode,
         });
@@ -118,6 +119,41 @@ export class StepGenerator {
       return configuredPlanet;
     }
     return planet;
+  }
+
+  private getMaterialGroupShip(
+    pkg: UserData.ActionPackageData,
+    config: ActionPackageConfig,
+    name: string | undefined,
+  ): string | undefined {
+    if (!name) {
+      this.log.error('Missing material group');
+      return undefined;
+    }
+    const group = pkg.groups.find(x => x.name === name);
+    if (!group) {
+      this.log.error('Unrecognized material group');
+      return undefined;
+    }
+    if (group.type !== 'Ship Repair') {
+      this.log.error(`Material group [${name}] is not a Ship Repair group`);
+      return undefined;
+    }
+    const ship = group.ship;
+    if (!ship) {
+      this.log.error(`Material group [${name}] has no ship configured`);
+      return undefined;
+    }
+    if (ship === configurableValue) {
+      const groupConfig = config.materialGroups[name] ?? {};
+      const configuredShip = (groupConfig as { ship?: string }).ship;
+      if (!configuredShip) {
+        this.log.error(`Material group [${name}] ship not configured`);
+        return undefined;
+      }
+      return configuredShip;
+    }
+    return ship;
   }
 
   private async getMaterialGroup(
