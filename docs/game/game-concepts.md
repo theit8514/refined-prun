@@ -67,6 +67,7 @@ A base is the primary operational unit on a planet.
 - A single-permit base has 500 building area. Each other permit adds 250.
 - Additional permits can be reclaimed at any time.
 - The first building on a planet is always the Base Core Module.
+- BSC Build Options is a `<select>`: `PLAYER_INITIAL_SITE` (Core Module Kit, for the first base) or `PLAYER_SITE` (Regular Building Materials, for later bases).
 - Without any storage buildings the base provides 1500m3/1500t of storage.
 
 Base Demolition requires: base not HQ, only core module remains, storage empty, no expanded permits, non-base storage available for reclaimed materials. Returns core module materials and reclaims the spent permit.
