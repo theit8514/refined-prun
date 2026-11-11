@@ -46,6 +46,20 @@ function truncate(text: string, limit: number) {
 }
 
 /**
+ * Types a ticker into a MaterialSelector and clicks the matching suggestion.
+ * Also used by MTRA_TRANSFER and the ship-unload feature. Delegates to the
+ * shared helper, which checks the updated client's #autosuggest-portal first,
+ * then the older in-selector list, and gives up after 3s.
+ */
+export async function selectMaterial(container: Element, ticker: string) {
+  const selected = await selectMaterialInMaterialSelector(container, ticker);
+  if (selected) {
+    await sleep(200);
+  }
+  return selected;
+}
+
+/**
  * Finds the "Create New" button in the requested CONTD tile, clicks it, and waits for the
  * new draft to appear in the store.
  */
@@ -251,7 +265,7 @@ export async function addMaterials(
 
     const matSelector = _$(group, C.MaterialSelector.container);
     assert(matSelector, `Could not find material selector for ${material.ticker}`);
-    const selected = await selectMaterialInMaterialSelector(matSelector, material.ticker);
+    const selected = await selectMaterial(matSelector, material.ticker);
     assert(selected, `Could not select material ${material.ticker}`);
     log.info(`Added: ${material.ticker} x${fixed0(material.amount)}`);
 
