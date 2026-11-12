@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import ActionBar from '@src/components/ActionBar.vue';
+import FilterRow from '@src/components/FilterRow.vue';
 import PrunButton from '@src/components/PrunButton.vue';
 import PrunLink from '@src/components/PrunLink.vue';
 import LoadingSpinner from '@src/components/LoadingSpinner.vue';
@@ -514,10 +515,10 @@ function pickGovTermForElectionRow(planetTerms: PrunApi.AdminCenterTerm[], atTim
     </ActionBar>
     <LoadingSpinner v-if="displayedRows === undefined" />
     <template v-else>
-      <div :class="C.ComExOrdersPanel.filter">
+      <FilterRow>
         <RadioItem v-model="gov" horizontal>GOV</RadioItem>
         <RadioItem v-model="cogc" horizontal>COGC</RadioItem>
-      </div>
+      </FilterRow>
       <p v-if="showStaleElectionDataNotice" :class="$style.notice">
         Data loads from notifications first and may stay <strong>stale</strong> until buffers load:
         governor rows may use estimates or show <strong>Unknown</strong> during an open vote until

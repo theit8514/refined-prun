@@ -4,7 +4,7 @@ import { getStarNaturalId, starsStore } from '@src/infrastructure/prun-api/data/
 import { stationsStore } from '@src/infrastructure/prun-api/data/stations';
 import { getMaterialName } from '@src/infrastructure/prun-ui/i18n';
 import { sleep } from './utils/sleep';
-import { waitFor } from './utils/wait-for';
+import { waitUntil } from '@src/utils/wait';
 
 // Download a file containing fileData with fileName
 export function downloadFile(fileData, fileName, isJSON: boolean = true) {
@@ -62,27 +62,6 @@ export function focusElement(input: HTMLElement) {
   input.dispatchEvent(event);
 }
 
-// The updated game client renders the suggestion list in the shared #autosuggest-portal,
-// as the address field already does. The older client renders it inside the selector.
-// The portal is checked first, then the selector, so both clients work.
-function findMaterialSuggestion(container: Element, ticker: string) {
-  const roots: Element[] = [];
-  const portal = document.getElementById('autosuggest-portal');
-  if (portal) {
-    roots.push(portal);
-  }
-  roots.push(container);
-  for (const root of roots) {
-    const match = _$$(root, C.MaterialSelector.suggestionEntry).find(
-      x => _$(x, C.ColoredIcon.label)?.textContent?.trim() === ticker,
-    );
-    if (match) {
-      return match as HTMLElement;
-    }
-  }
-  return undefined;
-}
-
 export async function selectMaterialInMaterialSelector(baseElement: Element, ticker: string) {
   let container = baseElement;
   if (!container.classList.contains(C.MaterialSelector.container)) {
@@ -90,30 +69,40 @@ export async function selectMaterialInMaterialSelector(baseElement: Element, tic
   }
   const input = await $(container, 'input');
 
-  // Hides the older client's in-selector list while it is driven. The updated client
-  // has no such list.
-  const suggestionsContainer = _$(container, C.MaterialSelector.suggestionsContainer) as
-    | HTMLElement
-    | undefined;
   focusElement(input);
   changeInputValue(input, ticker);
+  // Let React replace the previous query's suggestions.
+  await sleep(0);
 
-  if (suggestionsContainer) {
-    suggestionsContainer.style.display = 'none';
+  // Autosuggest links each input to its own popup, including portalled popups.
+  const getPopup = () => {
+    const popupId = input.getAttribute('aria-controls');
+    return popupId ? document.getElementById(popupId) : null;
+  };
+  const findMatch = (popup: HTMLElement | null) =>
+    popup
+      ? _$$(popup, C.MaterialSelector.suggestionEntry).find(
+          x => _$(x, C.ColoredIcon.label)?.textContent === ticker,
+        )
+      : undefined;
+  await waitUntil(() => !input.isConnected || findMatch(getPopup()));
+
+  const popup = getPopup();
+  const match = findMatch(popup);
+  if (!input.isConnected || !popup || !match) {
+    return false;
   }
-  let match: HTMLElement | undefined;
-  await waitFor(() => {
-    match = findMaterialSuggestion(container, ticker);
-    return match !== undefined;
-  }, 3000);
 
-  if (match) {
+  const display = popup.style.display;
+  popup.style.display = 'none';
+  try {
+    mouseOverElement(popup, match);
+    await sleep(0);
     await clickElement(match);
+    return true;
+  } finally {
+    popup.style.display = display;
   }
-  if (suggestionsContainer) {
-    suggestionsContainer.style.display = '';
-  }
-  return match !== undefined;
 }
 
 // A function to compare two planets (to be used in .sort() functions)

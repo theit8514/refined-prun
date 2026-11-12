@@ -188,7 +188,7 @@ Valid selectors:
 
 ### Material selector
 
-Use `selectMaterialInMaterialSelector` from `@src/util` for every material pick. The live client renders suggestions in `#autosuggest-portal`; older builds keep them inside the selector. The helper checks the portal first, then the selector, and returns `false` after 3s instead of waiting forever. Do not reimplement local suggestion waits.
+Use `selectMaterialInMaterialSelector` from `@src/util` for every material pick. The live client links each input to its suggestion popup through `aria-controls` (including portalled popups). The helper waits for that popup, then clicks the matching ticker. Do not reimplement local suggestion waits.
 
 ### `$` — Async Single Element (Gate Pattern)
 
